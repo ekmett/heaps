@@ -123,8 +123,6 @@ instance (Ord a, Data a) => Data (Heap a) where
        1 -> k (z fromList)
        _ -> error "gunfold"
 
-sort :: Ord a => [a] -> [a]
-sort = toList . fromList 
 
 heapDataType :: DataType
 heapDataType = mkDataType "Data.Heap.Heap" [fromListConstr]
@@ -157,6 +155,7 @@ instance Ord (Heap a) where
             go f [] []    = EQ
             go f [] (_:_) = LT
             go f (_:_) [] = GT
+
     
 -- | /O(1)/. Is the heap empty?
 --
@@ -273,6 +272,56 @@ deleteMin (Heap s leq (Node _ _ f0)) = Heap (s - 1) leq (Node 0 x f3)
         f2 = skewMeld leq (skewMeld leq ts1 ts2) f1
         f3 = foldr (skewInsert leq) f2 (trees zs)
 
+-- | /O(log n)/. Adjust the minimum key in the heap and return the resulting heap.
+adjustMin :: (a -> a) -> Heap a -> Heap a
+adjustMin _ Empty = Empty
+adjustMin f (Heap s leq (Node r x xs)) = Heap s leq (heapify leq (Node r (f x) xs))
+
+type ForestZipper a = (Forest a, Forest a)
+
+zipper :: Forest a -> ForestZipper a 
+zipper xs = (Nil, xs)
+
+emptyZ :: ForestZipper a
+emptyZ = (Nil, Nil)
+
+-- leftZ :: ForestZipper a -> ForestZipper a 
+-- leftZ (x :> path, xs) = (path, x :> xs)
+
+rightZ :: ForestZipper a -> ForestZipper a
+rightZ (path, x `Cons` xs) = (x `Cons` path, xs)
+
+adjustZ :: (Tree a -> Tree a) -> ForestZipper a -> ForestZipper a 
+adjustZ f (path, x `Cons` xs) = (path, f x `Cons` xs)
+adjustZ _ z = z
+
+rezip :: ForestZipper a -> Forest a
+rezip (Nil, xs) = xs
+rezip (x `Cons` path, xs) = rezip (path, x `Cons` xs)
+
+-- assumes non-empty zipper
+rootZ :: ForestZipper a -> a
+rootZ (_ , x `Cons` _) = root x
+rootZ _ = error "Heap.rootZ: empty zipper"
+
+minZ :: (a -> a -> Bool) -> Forest a -> ForestZipper a 
+minZ _ Nil = emptyZ
+minZ f xs = minZ' f z z
+    where z = zipper xs
+
+minZ' :: (a -> a -> Bool) -> ForestZipper a -> ForestZipper a -> ForestZipper a 
+minZ' _ lo (_, Nil) = lo
+minZ' leq lo z = minZ' leq (if leq (rootZ lo) (rootZ z) then lo else z) (rightZ z)
+
+heapify :: (a -> a -> Bool) -> Tree a -> Tree a 
+heapify _ n@(Node _ _ Nil) = n
+heapify leq n@(Node r a as) 
+    | leq a a' = n
+    | otherwise = Node r a' (rezip (left, heapify leq (Node r' a as') `Cons` right))
+    where
+        (left, Node r' a' as' `Cons` right) = minZ leq as
+        
+
 -- | /O(n)/. Build a heap from a list of values.
 --
 -- > size (fromList [1,5,3]) == 3
@@ -283,6 +332,10 @@ fromList = foldr insert mempty
 
 fromListWith :: (a -> a -> Bool) -> [a] -> Heap a
 fromListWith f = foldr (insertWith f) mempty
+
+-- | /O(n log n)/. Perform a heap sort
+sort :: Ord a => [a] -> [a]
+sort = toList . fromList 
 
 instance Monoid (Heap a) where
     mempty = empty
