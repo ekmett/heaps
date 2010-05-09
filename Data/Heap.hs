@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Heap
@@ -42,7 +41,7 @@ module Data.Heap
     , insert            -- O(1) :: Ord a => a -> Heap a -> Heap a
     , minimum           -- O(1) (/partial/) :: Ord a => Heap a -> a
     , deleteMin         -- O(log n) :: Heap a -> Heap a
-    , meld              -- O(1) :: Heap a -> Heap a -> Heap a
+    , union             -- O(1) :: Heap a -> Heap a -> Heap a
     , uncons, viewMin   -- O(1)\/O(log n) :: Heap a -> Maybe (a, Heap a)
     -- * Transformations
     , mapMonotonic      -- O(n) :: Ord b => (a -> b) -> Heap a -> Heap b 
@@ -50,6 +49,7 @@ module Data.Heap
     -- * To/From Lists
     , toUnsortedList    -- O(n) :: Heap a -> [a]
     , fromList          -- O(n) :: Ord a => [a] -> Heap a 
+    , sort              -- O(n log n) :: Ord a => [a] -> [a]
     , traverse          -- O(n log n) :: (Applicative t, Ord b) => (a -> t b) -> Heap a -> t (Heap b)
     , mapM              -- O(n log n) :: (Monad m, Ord b) => (a -> m b) -> Heap a -> m (Heap b)
     , concatMap         -- O(n) :: Ord b => Heap a -> (a -> Heap b) -> Heap b
@@ -122,6 +122,9 @@ instance (Ord a, Data a) => Data (Heap a) where
     gunfold k z c = case constrIndex c of
        1 -> k (z fromList)
        _ -> error "gunfold"
+
+sort :: Ord a => [a] -> [a]
+sort = toList . fromList 
 
 heapDataType :: DataType
 heapDataType = mkDataType "Data.Heap.Heap" [fromListConstr]
@@ -206,12 +209,12 @@ insertWith leq x (Heap s _ t@(Node _ y f))
 
 -- | /O(1)/. Meld the values from two heaps into one heap.
 --
--- > meld (fromList [1,3,5]) (fromList [6,4,2]) = fromList [1..6]
--- > meld (fromList [1,1,1]) (fromList [1,2,1]) = fromList [1,1,1,1,1,2]
-meld :: Heap a -> Heap a -> Heap a 
-meld Empty q = q
-meld q Empty = q
-meld (Heap s1 leq t1@(Node _ x1 f1)) (Heap s2 _ t2@(Node _ x2 f2))
+-- > union (fromList [1,3,5]) (fromList [6,4,2]) = fromList [1..6]
+-- > union (fromList [1,1,1]) (fromList [1,2,1]) = fromList [1,1,1,1,1,2]
+union :: Heap a -> Heap a -> Heap a 
+union Empty q = q
+union q Empty = q
+union (Heap s1 leq t1@(Node _ x1 f1)) (Heap s2 _ t2@(Node _ x2 f2))
     | leq x1 x2 = Heap (s1 + s2) leq (Node 0 x1 (skewInsert leq t2 f1))
     | otherwise = Heap (s1 + s2) leq (Node 0 x2 (skewInsert leq t1 f2))
 
@@ -225,13 +228,13 @@ replicate x0 y0
     | otherwise = f (singleton x0) y0
     where
         f x y 
-            | even y = f (meld x x) (quot y 2)
+            | even y = f (union x x) (quot y 2)
             | y == 1 = x
-            | otherwise = g (meld x x) (quot (y - 1) 2) x
+            | otherwise = g (union x x) (quot (y - 1) 2) x
         g x y z 
-            | even y = g (meld x x) (quot y 2) z
-            | y == 1 = meld x z
-            | otherwise = g (meld x x) (quot (y - 1) 2) (meld x z)
+            | even y = g (union x x) (quot y 2) z
+            | y == 1 = union x z
+            | otherwise = g (union x x) (quot (y - 1) 2) (union x z)
 
 -- | /O(1)/ access to the minimum element. 
 --   /O(log n)/ access to the remainder of the heap 
@@ -283,7 +286,7 @@ fromListWith f = foldr (insertWith f) mempty
 
 instance Monoid (Heap a) where
     mempty = empty
-    mappend = meld
+    mappend = union
 
 -- | /O(n)/. Returns the elements in the heap in some arbitrary, very likely unsorted, order.
 -- 
@@ -410,14 +413,14 @@ nub h@(Heap _ leq t) = insertWith leq x (nub zs)
         xs = deleteMin h
         zs = dropWhile (`leq` x) xs
 
--- | /O(n)/. Construct heaps from each element in another heap, and meld them together.
+-- | /O(n)/. Construct heaps from each element in another heap, and union them together.
 --
 -- concatMap (\a -> fromList [a,a+1]) (fromList [1,4]) == fromList [1,2,4,5]
 concatMap :: Ord b => (a -> Heap b) -> Heap a -> Heap b 
 concatMap _ Empty = Empty 
 concatMap f h@(Heap _ _ t) = foldMap f t
 
--- | /O(n log n)/. Group a heap into a heap of heaps, by melding together duplicates.
+-- | /O(n log n)/. Group a heap into a heap of heaps, by unioning together duplicates.
 -- 
 -- > group (fromList "hello") == fromList [fromList "h", fromList "e", fromList "ll", fromList "o"]
 group :: Heap a -> Heap (Heap a)
@@ -526,13 +529,13 @@ uniqify :: (a -> a -> Bool) -> Forest a -> Forest a
 uniqify _ Nil = Nil
 uniqify f (t `Cons` ts) = ins f t ts
 
-meldUniq :: (a -> a -> Bool) -> Forest a -> Forest a -> Forest a
-meldUniq _ Nil ts = ts
-meldUniq _ ts Nil = ts
-meldUniq f tts1@(t1 `Cons` ts1) tts2@(t2 `Cons` ts2) = case compare (rank t1) (rank t2) of
-        LT -> t1 `Cons` meldUniq f ts1 tts2
-        EQ -> ins f (link f t1 t2) (meldUniq f ts1 ts2)
-        GT -> t2 `Cons` meldUniq f tts1 ts2
+unionUniq :: (a -> a -> Bool) -> Forest a -> Forest a -> Forest a
+unionUniq _ Nil ts = ts
+unionUniq _ ts Nil = ts
+unionUniq f tts1@(t1 `Cons` ts1) tts2@(t2 `Cons` ts2) = case compare (rank t1) (rank t2) of
+        LT -> t1 `Cons` unionUniq f ts1 tts2
+        EQ -> ins f (link f t1 t2) (unionUniq f ts1 ts2)
+        GT -> t2 `Cons` unionUniq f tts1 ts2
 
 skewInsert :: (a -> a -> Bool) -> Tree a -> Forest a -> Forest a
 skewInsert f t ts@(t1 `Cons` t2 `Cons`rest) 
@@ -541,7 +544,7 @@ skewInsert f t ts@(t1 `Cons` t2 `Cons`rest)
 skewInsert _ t ts = t `Cons` ts
 
 skewMeld :: (a -> a -> Bool) -> Forest a -> Forest a -> Forest a 
-skewMeld f ts ts' = meldUniq f (uniqify f ts) (uniqify f ts')
+skewMeld f ts ts' = unionUniq f (uniqify f ts) (uniqify f ts')
 
 getMin :: (a -> a -> Bool) -> Forest a -> (Tree a, Forest a) 
 getMin _ (t `Cons` Nil) = (t, Nil)
