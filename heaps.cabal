@@ -1,11 +1,11 @@
 name:           heaps
-version:        0.2
+version:        0.2.1
 license:        BSD3
 license-file:   LICENSE
 author:         Edward A. Kmett
 maintainer:     Edward A. Kmett <ekmett@gmail.com>
 stability:      experimental
-homepage:       http://comonad.com/reader/
+homepage:       http://patch-tag.com/r/ekmett/heaps
 category:       Data Structures
 synopsis:       Asymptotically optimal Brodal/Okasaki heaps.
 description:    Asymptotically optimal Brodal/Okasaki bootstrapped skew-binomial heaps from the paper \"Optimal Purely Functional Priority Queues\", extended with a Foldable interface.
