@@ -12,7 +12,7 @@ synopsis:       Asymptotically optimal Brodal/Okasaki heaps.
 description:    Asymptotically optimal Brodal/Okasaki bootstrapped skew-binomial heaps from the paper \"Optimal Purely Functional Priority Queues\", extended with a Foldable interface.
 copyright:      (c) 2010 Edward A. Kmett
 build-type:     Simple
-cabal-version:  >=1.2
+cabal-version:  >=1.6
 extra-source-files: .travis.yml
 
 source-repository head
