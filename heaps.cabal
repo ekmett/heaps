@@ -1,5 +1,5 @@
 name:           heaps
-version:        0.2.1.1
+version:        0.2.2
 license:        BSD3
 license-file:   LICENSE
 author:         Edward A. Kmett
@@ -12,7 +12,7 @@ synopsis:       Asymptotically optimal Brodal/Okasaki heaps.
 description:    Asymptotically optimal Brodal/Okasaki bootstrapped skew-binomial heaps from the paper \"Optimal Purely Functional Priority Queues\", extended with a Foldable interface.
 copyright:      (c) 2010 Edward A. Kmett
 build-type:     Simple
-cabal-version:  >=1.6
+cabal-version:  >=1.8
 extra-source-files: .travis.yml
 
 source-repository head
@@ -23,3 +23,19 @@ library
   exposed-modules: Data.Heap
   build-depends:
     base >= 4 && < 6
+  hs-source-dirs: src
+
+-- Verify the results of the examples
+test-suite doctests
+  type:    exitcode-stdio-1.0
+  main-is: doctests.hs
+  build-depends:
+    base,
+    directory >= 1.0 && < 1.3,
+    doctest >= 0.9 && <= 0.10,
+    filepath
+  ghc-options: -Wall
+  if impl(ghc<7.6.1)
+    ghc-options: -Werror
+  hs-source-dirs: tests
+
