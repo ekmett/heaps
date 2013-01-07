@@ -86,6 +86,7 @@ import Control.Applicative (Applicative(pure))
 import Control.Monad (liftM)
 import Data.Monoid (Monoid(mappend, mempty))
 import Data.Foldable hiding (minimum, concatMap)
+import Data.Function (on)
 import Data.Data (DataType, Constr, mkConstr, mkDataType, Fixity(Prefix), Data(..), constrIndex)
 import Data.Typeable (Typeable)
 import Text.Read
@@ -100,29 +101,27 @@ import Data.Traversable (Traversable)
 
 -- | A min-heap of values of type @a@.
 data Heap a
-    = Empty
-    | Heap {-# UNPACK #-} !Int (a -> a -> Bool) {-# UNPACK #-} !(Tree a)
-    deriving (Typeable)
+  = Empty
+  | Heap {-# UNPACK #-} !Int (a -> a -> Bool) {-# UNPACK #-} !(Tree a)
+  deriving (Typeable)
 
 instance Show a => Show (Heap a) where
-    showsPrec _ Empty = showString "fromList []"
-    showsPrec d (Heap _ _ t) = showParen (d > 10) $
-            showString "fromList " .
-            showsPrec 11 (toList t)
+  showsPrec _ Empty = showString "fromList []"
+  showsPrec d (Heap _ _ t) = showParen (d > 10) $
+    showString "fromList " .  showsPrec 11 (toList t)
 
 instance (Ord a, Read a) => Read (Heap a) where
-    readPrec = parens $ prec 10 $ do
-        Ident "fromList" <- lexP
-        fromList `fmap` step readPrec
+  readPrec = parens $ prec 10 $ do
+    Ident "fromList" <- lexP
+    fromList `fmap` step readPrec
 
 instance (Ord a, Data a) => Data (Heap a) where
-    gfoldl k z h = z fromList `k` toUnsortedList h
-    toConstr _ = fromListConstr
-    dataTypeOf _ = heapDataType
-    gunfold k z c = case constrIndex c of
-       1 -> k (z fromList)
-       _ -> error "gunfold"
-
+  gfoldl k z h = z fromList `k` toUnsortedList h
+  toConstr _ = fromListConstr
+  dataTypeOf _ = heapDataType
+  gunfold k z c = case constrIndex c of
+    1 -> k (z fromList)
+    _ -> error "gunfold"
 
 heapDataType :: DataType
 heapDataType = mkDataType "Data.Heap.Heap" [fromListConstr]
@@ -131,30 +130,30 @@ fromListConstr :: Constr
 fromListConstr = mkConstr heapDataType "fromList" [] Prefix
 
 instance Eq (Heap a) where
-    Empty == Empty = True
-    Empty == Heap{} = False
-    Heap{} == Empty = False
-    a@(Heap s1 leq _) == b@(Heap s2 _ _) = s1 == s2 && go leq (toList a) (toList b)
-        where
-            go f (x:xs) (y:ys) = f x y && f y x && go f xs ys
-            go _ [] [] = True
-            go _ _ _ = False
+  Empty == Empty = True
+  Empty == Heap{} = False
+  Heap{} == Empty = False
+  a@(Heap s1 leq _) == b@(Heap s2 _ _) = s1 == s2 && go leq (toList a) (toList b)
+    where
+      go f (x:xs) (y:ys) = f x y && f y x && go f xs ys
+      go _ [] [] = True
+      go _ _ _ = False
 
 instance Ord (Heap a) where
-    Empty `compare` Empty = EQ
-    Empty `compare` Heap{} = LT
-    Heap{} `compare` Empty = GT
-    a@(Heap _ leq _) `compare` b = go leq (toList a) (toList b)
-        where
-            go f (x:xs) (y:ys) =
-                if f x y
-                then if f y x
-                     then go f xs ys
-                     else LT
-                else GT
-            go f [] []    = EQ
-            go f [] (_:_) = LT
-            go f (_:_) [] = GT
+  Empty `compare` Empty = EQ
+  Empty `compare` Heap{} = LT
+  Heap{} `compare` Empty = GT
+  a@(Heap _ leq _) `compare` b = go leq (toList a) (toList b)
+    where
+      go f (x:xs) (y:ys) =
+          if f x y
+          then if f y x
+               then go f xs ys
+               else LT
+          else GT
+      go f [] []    = EQ
+      go f [] (_:_) = LT
+      go f (_:_) [] = GT
 
 
 -- | /O(1)/. Is the heap empty?
@@ -167,6 +166,7 @@ instance Ord (Heap a) where
 null :: Heap a -> Bool
 null Empty = True
 null _ = False
+{-# INLINE null #-}
 
 -- | /O(1)/. The number of elements in the heap.
 --
@@ -179,6 +179,7 @@ null _ = False
 size :: Heap a -> Int
 size Empty = 0
 size (Heap s _ _) = s
+{-# INLINE size #-}
 
 -- | /O(1)/. The empty heap
 --
@@ -188,6 +189,7 @@ size (Heap s _ _) = s
 -- 0
 empty :: Heap a
 empty = Empty
+{-# INLINE empty #-}
 
 -- | /O(1)/. A heap with a single element
 --
@@ -200,9 +202,11 @@ empty = Empty
 -- 1
 singleton :: Ord a => a -> Heap a
 singleton = singletonWith (<=)
+{-# INLINE singleton #-}
 
 singletonWith :: (a -> a -> Bool) -> a -> Heap a
 singletonWith f a = Heap 1 f (Node 0 a Nil)
+{-# INLINE singletonWith #-}
 
 -- | /O(1)/. Insert a new value into the heap.
 --
@@ -215,12 +219,14 @@ singletonWith f a = Heap 1 f (Node 0 a Nil)
 -- @
 insert :: Ord a => a -> Heap a -> Heap a
 insert = insertWith (<=)
+{-# INLINE insert #-}
 
 insertWith :: (a -> a -> Bool) -> a -> Heap a -> Heap a
 insertWith leq x Empty = singletonWith leq x
 insertWith leq x (Heap s _ t@(Node _ y f))
-    | leq x y   = Heap (s+1) leq (Node 0 x (t `Cons` Nil))
-    | otherwise = Heap (s+1) leq (Node 0 y (skewInsert leq (Node 0 x Nil) f))
+  | leq x y   = Heap (s+1) leq (Node 0 x (t `Cons` Nil))
+  | otherwise = Heap (s+1) leq (Node 0 y (skewInsert leq (Node 0 x Nil) f))
+{-# INLINE insertWith #-}
 
 -- | /O(1)/. Meld the values from two heaps into one heap.
 --
@@ -232,8 +238,9 @@ union :: Heap a -> Heap a -> Heap a
 union Empty q = q
 union q Empty = q
 union (Heap s1 leq t1@(Node _ x1 f1)) (Heap s2 _ t2@(Node _ x2 f2))
-    | leq x1 x2 = Heap (s1 + s2) leq (Node 0 x1 (skewInsert leq t2 f1))
-    | otherwise = Heap (s1 + s2) leq (Node 0 x2 (skewInsert leq t1 f2))
+  | leq x1 x2 = Heap (s1 + s2) leq (Node 0 x1 (skewInsert leq t2 f1))
+  | otherwise = Heap (s1 + s2) leq (Node 0 x2 (skewInsert leq t1 f2))
+{-# INLINE union #-}
 
 -- | /O(log n)/. Create a heap consisting of multiple copies of the same value.
 --
@@ -241,18 +248,19 @@ union (Heap s1 leq t1@(Node _ x1 f1)) (Heap s2 _ t2@(Node _ x2 f2))
 -- fromList "aaaaaaaaaa"
 replicate :: Ord a => a -> Int -> Heap a
 replicate x0 y0
-    | y0 < 0 = error "Heap.replicate: negative length"
-    | y0 == 0 = mempty
-    | otherwise = f (singleton x0) y0
-    where
-        f x y
-            | even y = f (union x x) (quot y 2)
-            | y == 1 = x
-            | otherwise = g (union x x) (quot (y - 1) 2) x
-        g x y z
-            | even y = g (union x x) (quot y 2) z
-            | y == 1 = union x z
-            | otherwise = g (union x x) (quot (y - 1) 2) (union x z)
+  | y0 < 0 = error "Heap.replicate: negative length"
+  | y0 == 0 = mempty
+  | otherwise = f (singleton x0) y0
+  where
+    f x y
+        | even y = f (union x x) (quot y 2)
+        | y == 1 = x
+        | otherwise = g (union x x) (quot (y - 1) 2) x
+    g x y z
+        | even y = g (union x x) (quot y 2) z
+        | y == 1 = union x z
+        | otherwise = g (union x x) (quot (y - 1) 2) (union x z)
+{-# INLINE replicate #-}
 
 -- | Provides both /O(1)/ access to the minimum element and /O(log n)/ access to the remainder of the heap.
 -- This is the same operation as 'viewMin'
@@ -262,10 +270,12 @@ replicate x0 y0
 uncons :: Ord a => Heap a -> Maybe (a, Heap a)
 uncons Empty = Nothing
 uncons l@(Heap _ _ t) = Just (root t, deleteMin l)
+{-# INLINE uncons #-}
 
 -- | Same as 'uncons'
 viewMin :: Ord a => Heap a -> Maybe (a, Heap a)
 viewMin = uncons
+{-# INLINE viewMin #-}
 
 -- | /O(1)/. Assumes the argument is a non-'null' heap.
 --
@@ -274,6 +284,7 @@ viewMin = uncons
 minimum :: Heap a -> a
 minimum Empty = error "Heap.minimum: empty heap"
 minimum (Heap _ _ t) = root t
+{-# INLINE minimum #-}
 
 trees :: Forest a -> [Tree a]
 trees (a `Cons` as) = a : trees as
@@ -287,11 +298,12 @@ deleteMin :: Heap a -> Heap a
 deleteMin Empty = Empty
 deleteMin (Heap _ _ (Node _ _ Nil)) = Empty
 deleteMin (Heap s leq (Node _ _ f0)) = Heap (s - 1) leq (Node 0 x f3)
-    where
-        (Node r x cf, ts2) = getMin leq f0
-        (zs, ts1, f1) = splitForest r Nil Nil cf
-        f2 = skewMeld leq (skewMeld leq ts1 ts2) f1
-        f3 = foldr (skewInsert leq) f2 (trees zs)
+  where
+    (Node r x cf, ts2) = getMin leq f0
+    (zs, ts1, f1) = splitForest r Nil Nil cf
+    f2 = skewMeld leq (skewMeld leq ts1 ts2) f1
+    f3 = foldr (skewInsert leq) f2 (trees zs)
+{-# INLINE deleteMin #-}
 
 -- | /O(log n)/. Adjust the minimum key in the heap and return the resulting heap.
 --
@@ -300,24 +312,29 @@ deleteMin (Heap s leq (Node _ _ f0)) = Heap (s - 1) leq (Node 0 x f3)
 adjustMin :: (a -> a) -> Heap a -> Heap a
 adjustMin _ Empty = Empty
 adjustMin f (Heap s leq (Node r x xs)) = Heap s leq (heapify leq (Node r (f x) xs))
+{-# INLINE adjustMin #-}
 
 type ForestZipper a = (Forest a, Forest a)
 
 zipper :: Forest a -> ForestZipper a
 zipper xs = (Nil, xs)
+{-# INLINE zipper #-}
 
 emptyZ :: ForestZipper a
 emptyZ = (Nil, Nil)
+{-# INLINE emptyZ #-}
 
 -- leftZ :: ForestZipper a -> ForestZipper a
 -- leftZ (x :> path, xs) = (path, x :> xs)
 
 rightZ :: ForestZipper a -> ForestZipper a
 rightZ (path, x `Cons` xs) = (x `Cons` path, xs)
+{-# INLINE rightZ #-}
 
 adjustZ :: (Tree a -> Tree a) -> ForestZipper a -> ForestZipper a
 adjustZ f (path, x `Cons` xs) = (path, f x `Cons` xs)
 adjustZ _ z = z
+{-# INLINE adjustZ #-}
 
 rezip :: ForestZipper a -> Forest a
 rezip (Nil, xs) = xs
@@ -327,11 +344,13 @@ rezip (x `Cons` path, xs) = rezip (path, x `Cons` xs)
 rootZ :: ForestZipper a -> a
 rootZ (_ , x `Cons` _) = root x
 rootZ _ = error "Heap.rootZ: empty zipper"
+{-# INLINE rootZ #-}
 
 minZ :: (a -> a -> Bool) -> Forest a -> ForestZipper a
 minZ _ Nil = emptyZ
 minZ f xs = minZ' f z z
     where z = zipper xs
+{-# INLINE minZ #-}
 
 minZ' :: (a -> a -> Bool) -> ForestZipper a -> ForestZipper a -> ForestZipper a
 minZ' _ lo (_, Nil) = lo
@@ -340,10 +359,10 @@ minZ' leq lo z = minZ' leq (if leq (rootZ lo) (rootZ z) then lo else z) (rightZ 
 heapify :: (a -> a -> Bool) -> Tree a -> Tree a
 heapify _ n@(Node _ _ Nil) = n
 heapify leq n@(Node r a as)
-    | leq a a' = n
-    | otherwise = Node r a' (rezip (left, heapify leq (Node r' a as') `Cons` right))
-    where
-        (left, Node r' a' as' `Cons` right) = minZ leq as
+  | leq a a' = n
+  | otherwise = Node r a' (rezip (left, heapify leq (Node r' a as') `Cons` right))
+  where
+    (left, Node r' a' as' `Cons` right) = minZ leq as
 
 
 -- | /O(n)/. Build a heap from a list of values.
@@ -355,20 +374,24 @@ heapify leq n@(Node r a as)
 
 -- >>> size (fromList [1,5,3])
 -- 3
-
 fromList :: Ord a => [a] -> Heap a
 fromList = foldr insert mempty
+{-# INLINE fromList #-}
 
 fromListWith :: (a -> a -> Bool) -> [a] -> Heap a
 fromListWith f = foldr (insertWith f) mempty
+{-# INLINE fromListWith #-}
 
 -- | /O(n log n)/. Perform a heap sort
 sort :: Ord a => [a] -> [a]
 sort = toList . fromList
+{-# INLINE sort #-}
 
 instance Monoid (Heap a) where
-    mempty = empty
-    mappend = union
+  mempty = empty
+  {-# INLINE mempty #-}
+  mappend = union
+  {-# INLINE mappend #-}
 
 -- | /O(n)/. Returns the elements in the heap in some arbitrary, very likely unsorted, order.
 --
@@ -379,10 +402,11 @@ instance Monoid (Heap a) where
 toUnsortedList :: Heap a -> [a]
 toUnsortedList Empty = []
 toUnsortedList (Heap _ _ t) = foldMap return t
+{-# INLINE toUnsortedList #-}
 
 instance Foldable Heap where
-    foldMap _ Empty = mempty
-    foldMap f l@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin l)
+  foldMap _ Empty = mempty
+  foldMap f l@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin l)
 
 -- | /O(n)/. Map a function over the heap, returning a new heap ordered appropriately for its fresh contents
 --
@@ -391,6 +415,7 @@ instance Foldable Heap where
 map :: Ord b => (a -> b) -> Heap a -> Heap b
 map _ Empty = Empty
 map f (Heap _ _ t) = foldMap (singleton . f) t
+{-# INLINE map #-}
 
 -- | /O(n)/. Map a monotone increasing function over the heap.
 -- Provides a better constant factor for performance than 'map', but no checking is performed that the function provided is monotone increasing. Misuse of this function can cause a Heap to violate the heap property.
@@ -402,6 +427,7 @@ map f (Heap _ _ t) = foldMap (singleton . f) t
 mapMonotonic :: Ord b => (a -> b) -> Heap a -> Heap b
 mapMonotonic _ Empty = Empty
 mapMonotonic f (Heap s _ t) = Heap s (<=) (fmap f t)
+{-# INLINE mapMonotonic #-}
 
 -- * Filter
 
@@ -416,9 +442,10 @@ mapMonotonic f (Heap s _ t) = Heap s (<=) (fmap f t)
 filter :: (a -> Bool) -> Heap a -> Heap a
 filter _ Empty = Empty
 filter p (Heap _ leq t) = foldMap f t
-    where
-        f x | p x = singletonWith leq x
-            | otherwise = Empty
+  where
+    f x | p x = singletonWith leq x
+        | otherwise = Empty
+{-# INLINE filter #-}
 
 -- | /O(n)/. Partition the heap according to a predicate. The first heap contains all elements that satisfy the predicate, the second all elements that fail the predicate. See also 'split'.
 --
@@ -427,9 +454,10 @@ filter p (Heap _ leq t) = foldMap f t
 partition :: (a -> Bool) -> Heap a -> (Heap a, Heap a)
 partition _ Empty = (Empty, Empty)
 partition p (Heap _ leq t) = foldMap f t
-    where
-        f x | p x       = (singletonWith leq x, mempty)
-            | otherwise = (mempty, singletonWith leq x)
+  where
+    f x | p x       = (singletonWith leq x, mempty)
+        | otherwise = (mempty, singletonWith leq x)
+{-# INLINE partition #-}
 
 -- | /O(n)/. Partition the heap into heaps of the elements that are less than, equal to, and greater than a given value.
 --
@@ -438,12 +466,13 @@ partition p (Heap _ leq t) = foldMap f t
 split :: a -> Heap a -> (Heap a, Heap a, Heap a)
 split a Empty = (Empty, Empty, Empty)
 split a (Heap s leq t) = foldMap f t
-    where
-        f x = if leq x a
-              then if leq a x
-                   then (mempty, singletonWith leq x, mempty)
-                   else (singletonWith leq x, mempty, mempty)
-              else (mempty, mempty, singletonWith leq x)
+  where
+    f x = if leq x a
+          then if leq a x
+               then (mempty, singletonWith leq x, mempty)
+               else (singletonWith leq x, mempty, mempty)
+          else (mempty, mempty, singletonWith leq x)
+{-# INLINE split #-}
 
 -- * Subranges
 
@@ -453,14 +482,17 @@ split a (Heap s leq t) = foldMap f t
 -- fromList [1,2,2]
 take :: Int -> Heap a -> Heap a
 take = withList . L.take
+{-# INLINE take #-}
 
 -- | /O(n log n)/. Return a heap consisting of all members of given heap except for the @n@ least elements.
 drop :: Int -> Heap a -> Heap a
 drop = withList . L.drop
+{-# INLINE drop #-}
 
 -- | /O(n log n)/. Split a heap into two heaps, the first containing the @n@ least elements, the latter consisting of all members of the heap except for those elements.
 splitAt :: Int -> Heap a -> (Heap a, Heap a)
 splitAt = splitWithList . L.splitAt
+{-# INLINE splitAt #-}
 
 -- | /O(n log n)/. 'break' applied to a predicate @p@ and a heap @xs@ returns a tuple where the first element is a heap consisting of the
 -- longest prefix the least elements of @xs@ that /do not satisfy/ p and the second element is the remainder of the elements in the heap.
@@ -471,6 +503,7 @@ splitAt = splitWithList . L.splitAt
 -- 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (a -> Bool) -> Heap a -> (Heap a, Heap a)
 break = splitWithList . L.break
+{-# INLINE break #-}
 
 -- | /O(n log n)/. 'span' applied to a predicate @p@ and a heap @xs@ returns a tuple where the first element is a heap consisting of the
 -- longest prefix the least elements of xs that satisfy @p@ and the second element is the remainder of the elements in the heap.
@@ -482,6 +515,7 @@ break = splitWithList . L.break
 
 span :: (a -> Bool) -> Heap a -> (Heap a, Heap a)
 span = splitWithList . L.span
+{-# INLINE span #-}
 
 -- | /O(n log n)/. 'takeWhile' applied to a predicate @p@ and a heap @xs@ returns a heap consisting of the
 -- longest prefix the least elements of @xs@ that satisfy @p@.
@@ -490,6 +524,7 @@ span = splitWithList . L.span
 -- fromList [4,8,12]
 takeWhile :: (a -> Bool) -> Heap a -> Heap a
 takeWhile = withList . L.takeWhile
+{-# INLINE takeWhile #-}
 
 -- | /O(n log n)/. 'dropWhile' @p xs@ returns the suffix of the heap remaining after 'takeWhile' @p xs@.
 --
@@ -497,6 +532,7 @@ takeWhile = withList . L.takeWhile
 -- fromList [14,16]
 dropWhile :: (a -> Bool) -> Heap a -> Heap a
 dropWhile = withList . L.dropWhile
+{-# INLINE dropWhile #-}
 
 -- | /O(n log n)/. Remove duplicate entries from the heap.
 --
@@ -505,10 +541,11 @@ dropWhile = withList . L.dropWhile
 nub :: Heap a -> Heap a
 nub Empty = Empty
 nub h@(Heap _ leq t) = insertWith leq x (nub zs)
-    where
-        x = root t
-        xs = deleteMin h
-        zs = dropWhile (`leq` x) xs
+  where
+    x = root t
+    xs = deleteMin h
+    zs = dropWhile (`leq` x) xs
+{-# INLINE nub #-}
 
 -- | /O(n)/. Construct heaps from each element in another heap, and union them together.
 --
@@ -517,6 +554,7 @@ nub h@(Heap _ leq t) = insertWith leq x (nub zs)
 concatMap :: Ord b => (a -> Heap b) -> Heap a -> Heap b
 concatMap _ Empty = Empty
 concatMap f h@(Heap _ _ t) = foldMap f t
+{-# INLINE concatMap #-}
 
 -- | /O(n log n)/. Group a heap into a heap of heaps, by unioning together duplicates.
 --
@@ -525,104 +563,108 @@ concatMap f h@(Heap _ _ t) = foldMap f t
 group :: Heap a -> Heap (Heap a)
 group Empty = Empty
 group h@(Heap _ leq _) = groupBy (flip leq) h
+{-# INLINE group #-}
 
 -- | /O(n log n)/. Group using a user supplied function.
 groupBy :: (a -> a -> Bool) -> Heap a -> Heap (Heap a)
 groupBy f Empty = Empty
 groupBy f h@(Heap _ leq t) = insert (insertWith leq x ys) (groupBy f zs)
-    where
-        x = root t
-        xs = deleteMin h
-        (ys,zs) = span (f x) xs
+  where
+    x = root t
+    xs = deleteMin h
+    (ys,zs) = span (f x) xs
+{-# INLINE groupBy #-}
 
 -- | /O(n log n + m log m)/. Intersect the values in two heaps, returning the value in the left heap that compares as equal
 intersect :: Heap a -> Heap a -> Heap a
 intersect Empty _ = Empty
 intersect _ Empty = Empty
 intersect a@(Heap _ leq _) b = go leq (toList a) (toList b)
-    where
-        go leq' xxs@(x:xs) yys@(y:ys) =
-            if leq' x y
-            then if leq' y x
-                 then insertWith leq' x (go leq' xs ys)
-                 else go leq' xs yys
-            else go leq' xxs ys
-        go _ [] _ = empty
-        go _ _ [] = empty
+  where
+    go leq' xxs@(x:xs) yys@(y:ys) =
+        if leq' x y
+        then if leq' y x
+             then insertWith leq' x (go leq' xs ys)
+             else go leq' xs yys
+        else go leq' xxs ys
+    go _ [] _ = empty
+    go _ _ [] = empty
+{-# INLINE intersect #-}
 
 -- | /O(n log n + m log m)/. Intersect the values in two heaps using a function to generate the elements in the right heap.
 intersectWith :: Ord b => (a -> a -> b) -> Heap a -> Heap a -> Heap b
 intersectWith _ Empty _ = Empty
 intersectWith _ _ Empty = Empty
 intersectWith f a@(Heap _ leq _) b = go leq f (toList a) (toList b)
-    where
-        go :: Ord b => (a -> a -> Bool) -> (a -> a -> b) -> [a] -> [a] -> Heap b
-        go leq' f' xxs@(x:xs) yys@(y:ys)
-            | leq' x y =
-                if leq' y x
-                then insert (f' x y) (go leq' f' xs ys)
-                else go leq' f' xs yys
-            | otherwise = go leq' f' xxs ys
-        go _ _ [] _ = empty
-        go _ _ _ [] = empty
+  where
+    go :: Ord b => (a -> a -> Bool) -> (a -> a -> b) -> [a] -> [a] -> Heap b
+    go leq' f' xxs@(x:xs) yys@(y:ys)
+        | leq' x y =
+            if leq' y x
+            then insert (f' x y) (go leq' f' xs ys)
+            else go leq' f' xs yys
+        | otherwise = go leq' f' xxs ys
+    go _ _ [] _ = empty
+    go _ _ _ [] = empty
+{-# INLINE intersectWith #-}
 
 -- | /O(n log n)/. Traverse the elements of the heap in sorted order and produce a new heap using 'Applicative' side-effects.
 traverse :: (Applicative t, Ord b) => (a -> t b) -> Heap a -> t (Heap b)
 traverse f = fmap fromList . Traversable.traverse f . toList
+{-# INLINE traverse #-}
 
 -- | /O(n log n)/. Traverse the elements of the heap in sorted order and produce a new heap using 'Monad'ic side-effects.
 mapM :: (Monad m, Ord b) => (a -> m b) -> Heap a -> m (Heap b)
 mapM f = liftM fromList . Traversable.mapM f . toList
+{-# INLINE mapM #-}
 
 both :: (a -> b) -> (a, a) -> (b, b)
 both f (a,b) = (f a, f b)
-
-on :: (b -> b -> c) -> (a -> b) -> a -> a -> c
-on f g a b = f (g a) (g b)
+{-# INLINE both #-}
 
 -- we hold onto the children counts in the nodes for /O(1)/ 'size'
 data Tree a = Node
-    { rank :: {-# UNPACK #-} !Int
-    , root :: a
-    , _forest :: !(Forest a)
-    } deriving (Show,Read,Typeable)
+  { rank :: {-# UNPACK #-} !Int
+  , root :: a
+  , _forest :: !(Forest a)
+  } deriving (Show,Read,Typeable)
 
 data Forest a = !(Tree a) `Cons` !(Forest a) | Nil
-    deriving (Show,Read,Typeable)
+  deriving (Show,Read,Typeable)
 infixr 5 `Cons`
 
 instance Functor Tree where
-    fmap f (Node r a as) = Node r (f a) (fmap f as)
+  fmap f (Node r a as) = Node r (f a) (fmap f as)
 
 instance Functor Forest where
-    fmap f (a `Cons` as) = fmap f a `Cons` fmap f as
-    fmap _ Nil = Nil
+  fmap f (a `Cons` as) = fmap f a `Cons` fmap f as
+  fmap _ Nil = Nil
 
 -- internal foldable instances that should only be used over commutative monoids
 instance Foldable Tree where
-    foldMap f (Node _ a as) = f a `mappend` foldMap f as
+  foldMap f (Node _ a as) = f a `mappend` foldMap f as
 
 -- internal foldable instances that should only be used over commutative monoids
 instance Foldable Forest where
-    foldMap f (a `Cons` as) = foldMap f a `mappend` foldMap f as
-    foldMap _ Nil = mempty
+  foldMap f (a `Cons` as) = foldMap f a `mappend` foldMap f as
+  foldMap _ Nil = mempty
 
 link :: (a -> a -> Bool) -> Tree a -> Tree a -> Tree a
 link f t1@(Node r1 x1 cf1) t2@(Node r2 x2 cf2) -- assumes r1 == r2
-    | f x1 x2   = Node (r1+1) x1 (t2 `Cons` cf1)
-    | otherwise = Node (r2+1) x2 (t1 `Cons` cf2)
+  | f x1 x2   = Node (r1+1) x1 (t2 `Cons` cf1)
+  | otherwise = Node (r2+1) x2 (t1 `Cons` cf2)
 
 skewLink :: (a -> a -> Bool) -> Tree a -> Tree a -> Tree a -> Tree a
 skewLink f t0@(Node _ x0 cf0) t1@(Node r1 x1 cf1) t2@(Node r2 x2 cf2)
-    | f x1 x0 && f x1 x2 = Node (r1+1) x1 (t0 `Cons` t2 `Cons` cf1)
-    | f x2 x0 && f x2 x1 = Node (r2+1) x2 (t0 `Cons` t1 `Cons` cf2)
-    | otherwise          = Node (r1+1) x0 (t1 `Cons` t2 `Cons` cf0)
+  | f x1 x0 && f x1 x2 = Node (r1+1) x1 (t0 `Cons` t2 `Cons` cf1)
+  | f x2 x0 && f x2 x1 = Node (r2+1) x2 (t0 `Cons` t1 `Cons` cf2)
+  | otherwise          = Node (r1+1) x0 (t1 `Cons` t2 `Cons` cf0)
 
 ins :: (a -> a -> Bool) -> Tree a -> Forest a -> Forest a
 ins _ t Nil = t `Cons` Nil
 ins f t (t' `Cons` ts) -- assumes rank t <= rank t'
-    | rank t < rank t' = t `Cons` t' `Cons` ts
-    | otherwise = ins f (link f t t') ts
+  | rank t < rank t' = t `Cons` t' `Cons` ts
+  | otherwise = ins f (link f t t') ts
 
 uniqify :: (a -> a -> Bool) -> Forest a -> Forest a
 uniqify _ Nil = Nil
@@ -632,25 +674,27 @@ unionUniq :: (a -> a -> Bool) -> Forest a -> Forest a -> Forest a
 unionUniq _ Nil ts = ts
 unionUniq _ ts Nil = ts
 unionUniq f tts1@(t1 `Cons` ts1) tts2@(t2 `Cons` ts2) = case compare (rank t1) (rank t2) of
-        LT -> t1 `Cons` unionUniq f ts1 tts2
-        EQ -> ins f (link f t1 t2) (unionUniq f ts1 ts2)
-        GT -> t2 `Cons` unionUniq f tts1 ts2
+  LT -> t1 `Cons` unionUniq f ts1 tts2
+  EQ -> ins f (link f t1 t2) (unionUniq f ts1 ts2)
+  GT -> t2 `Cons` unionUniq f tts1 ts2
 
 skewInsert :: (a -> a -> Bool) -> Tree a -> Forest a -> Forest a
 skewInsert f t ts@(t1 `Cons` t2 `Cons`rest)
-    | rank t1 == rank t2 = skewLink f t t1 t2 `Cons` rest
-    | otherwise = t `Cons` ts
+  | rank t1 == rank t2 = skewLink f t t1 t2 `Cons` rest
+  | otherwise = t `Cons` ts
 skewInsert _ t ts = t `Cons` ts
+{-# INLINE skewInsert #-}
 
 skewMeld :: (a -> a -> Bool) -> Forest a -> Forest a -> Forest a
 skewMeld f ts ts' = unionUniq f (uniqify f ts) (uniqify f ts')
+{-# INLINE skewMeld #-}
 
 getMin :: (a -> a -> Bool) -> Forest a -> (Tree a, Forest a)
 getMin _ (t `Cons` Nil) = (t, Nil)
 getMin f (t `Cons` ts)
-    | f (root t) (root t') = (t, ts)
-    | otherwise            = (t', t `Cons` ts')
-    where (t',ts') = getMin f ts
+  | f (root t) (root t') = (t, ts)
+  | otherwise            = (t', t `Cons` ts')
+  where (t',ts') = getMin f ts
 getMin _ Nil = error "Heap.getMin: empty forest"
 
 splitForest :: Int -> Forest a -> Forest a -> Forest a -> (Forest a, Forest a, Forest a)
@@ -658,48 +702,53 @@ splitForest a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
 splitForest 0 zs ts f = (zs, ts, f)
 splitForest 1 zs ts (t `Cons` Nil) = (zs, t `Cons` ts, Nil)
 splitForest 1 zs ts (t1 `Cons` t2 `Cons` f)
-        -- rank t1 == 0
-        | rank t2 == 0 = (t1 `Cons` zs, t2 `Cons` ts, f)
-        | otherwise    = (zs, t1 `Cons` ts, t2 `Cons` f)
+  -- rank t1 == 0
+  | rank t2 == 0 = (t1 `Cons` zs, t2 `Cons` ts, f)
+  | otherwise    = (zs, t1 `Cons` ts, t2 `Cons` f)
 splitForest r zs ts (t1 `Cons` t2 `Cons` cf)
-    -- r1 = r - 1 or r1 == 0
-    | r1 == r2          = (zs, t1 `Cons` t2 `Cons` ts, cf)
-    | r1 == 0           = splitForest (r-1) (t1 `Cons` zs) (t2 `Cons` ts) cf
-    | otherwise         = splitForest (r-1) zs (t1 `Cons` ts) (t2 `Cons` cf)
-    where
-        r1 = rank t1
-        r2 = rank t2
+  -- r1 = r - 1 or r1 == 0
+  | r1 == r2          = (zs, t1 `Cons` t2 `Cons` ts, cf)
+  | r1 == 0           = splitForest (r-1) (t1 `Cons` zs) (t2 `Cons` ts) cf
+  | otherwise         = splitForest (r-1) zs (t1 `Cons` ts) (t2 `Cons` cf)
+  where
+    r1 = rank t1
+    r2 = rank t2
 splitForest _ _ _ _ = error "Heap.splitForest: invalid arguments"
 
 withList :: ([a] -> [a]) -> Heap a -> Heap a
 withList _ Empty = Empty
 withList f hp@(Heap _ leq _) = fromListWith leq (f (toList hp))
+{-# INLINE withList #-}
 
 splitWithList :: ([a] -> ([a],[a])) -> Heap a -> (Heap a, Heap a)
 splitWithList _ Empty = (Empty, Empty)
 splitWithList f hp@(Heap _ leq _) = both (fromListWith leq) (f (toList hp))
+{-# INLINE splitWithList #-}
 
 -- | explicit priority/payload tuples
 data Entry p a = Entry { priority :: p, payload :: a }
-    deriving (Read,Show,Data,Typeable)
+  deriving (Read,Show,Data,Typeable)
 
 instance Functor (Entry p) where
-    fmap f (Entry p a) = Entry p (f a)
+  fmap f (Entry p a) = Entry p (f a)
+  {-# INLINE fmap #-}
 
 instance Foldable (Entry p) where
-    foldMap f (Entry _ a) = f a
+  foldMap f (Entry _ a) = f a
+  {-# INLINE foldMap #-}
 
 instance Traversable (Entry p) where
-    traverse f (Entry p a) = Entry p `fmap` f a
-
--- instance Copointed (Entry p) where
---     extract (Entry _ a) = a
+  traverse f (Entry p a) = Entry p `fmap` f a
+  {-# INLINE traverse #-}
 
 -- instance Comonad (Entry p) where
---     extend f pa@(Entry p _) Entry p (f pa)
+--   extract (Entry _ a) = a
+--   extend f pa@(Entry p _) Entry p (f pa)
 
 instance Eq p => Eq (Entry p a) where
-    (==) = (==) `on` priority
+  (==) = (==) `on` priority
+  {-# INLINE (==) #-}
 
 instance Ord p => Ord (Entry p a) where
-    compare = compare `on` priority
+  compare = compare `on` priority
+  {-# INLINE compare #-}

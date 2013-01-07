@@ -1,5 +1,5 @@
 name:           heaps
-version:        0.2.2
+version:        0.2.3
 license:        BSD3
 license-file:   LICENSE
 author:         Edward A. Kmett
@@ -24,6 +24,7 @@ library
   build-depends:
     base >= 4 && < 6
   hs-source-dirs: src
+  ghc-options: -O2
 
 -- Verify the results of the examples
 test-suite doctests
