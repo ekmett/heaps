@@ -20,9 +20,8 @@
 -- The implementation of 'Heap' is based on /bootstrapped skew binomial heaps/
 -- as described by:
 --
---    * G. Brodal and C. Okasaki , \"/Optimal Purely Functional Priority Queues/\",
---      /Journal of Functional Programming/ 6:839-857 (1996),
---      <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.48.973>
+--    * G. Brodal and C. Okasaki , <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.48.973 "Optimal Purely Functional Priority Queues">,
+--      /Journal of Functional Programming/ 6:839-857 (1996)
 --
 -- All time bounds are worst-case.
 -----------------------------------------------------------------------------
