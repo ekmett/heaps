@@ -13,7 +13,7 @@ description:    Asymptotically optimal Brodal/Okasaki bootstrapped skew-binomial
 copyright:      (c) 2010 Edward A. Kmett
 build-type:     Simple
 cabal-version:  >=1.8
-extra-source-files: .travis.yml
+extra-source-files: .travis.yml CHANGELOG.markdown README.markdown
 
 source-repository head
   type: git
