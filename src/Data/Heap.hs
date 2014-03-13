@@ -1,4 +1,8 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 707
+{-# LANGUAGE RoleAnnotations #-}
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Heap
@@ -102,7 +106,11 @@ import Data.Traversable (Traversable)
 data Heap a
   = Empty
   | Heap {-# UNPACK #-} !Int (a -> a -> Bool) {-# UNPACK #-} !(Tree a)
-  deriving (Typeable)
+  deriving Typeable
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 707
+type role Heap nominal
+#endif
 
 instance Show a => Show (Heap a) where
   showsPrec _ Empty = showString "fromList []"
