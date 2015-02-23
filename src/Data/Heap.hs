@@ -83,12 +83,19 @@ import Prelude hiding
     , span, dropWhile, takeWhile, break, filter, take, drop, splitAt
     , foldr, minimum, replicate, mapM
     , concatMap
+#if MIN_VERSION_base(4,8,0)
+    , traverse
+#endif
     )
 import qualified Data.List as L
 import Control.Applicative (Applicative(pure))
 import Control.Monad (liftM)
 import Data.Monoid (Monoid(mappend, mempty))
+#if MIN_VERSION_base(4,8,0)
+import Data.Foldable hiding (minimum, concatMap, null)
+#else
 import Data.Foldable hiding (minimum, concatMap)
+#endif
 import Data.Function (on)
 import Data.Data (DataType, Constr, mkConstr, mkDataType, Fixity(Prefix), Data(..), constrIndex)
 import Data.Typeable (Typeable)
