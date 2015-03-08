@@ -79,10 +79,15 @@ module Data.Heap
     ) where
 
 import Prelude hiding
-    ( map, null
+    ( map
     , span, dropWhile, takeWhile, break, filter, take, drop, splitAt
     , foldr, minimum, replicate, mapM
     , concatMap
+#if __GLASGOW_HASKELL__ < 710
+    , null
+#else
+    , traverse
+#endif
     )
 import qualified Data.List as L
 import Control.Applicative (Applicative(pure))
@@ -163,30 +168,6 @@ instance Ord (Heap a) where
       go f (_:_) [] = GT
 
 
--- | /O(1)/. Is the heap empty?
---
--- >>> null empty
--- True
---
--- >>> null (singleton "hello")
--- False
-null :: Heap a -> Bool
-null Empty = True
-null _ = False
-{-# INLINE null #-}
-
--- | /O(1)/. The number of elements in the heap.
---
--- >>> size empty
--- 0
--- >>> size (singleton "hello")
--- 1
--- >>> size (fromList [4,1,2])
--- 3
-size :: Heap a -> Int
-size Empty = 0
-size (Heap s _ _) = s
-{-# INLINE size #-}
 
 -- | /O(1)/. The empty heap
 --
@@ -414,6 +395,39 @@ toUnsortedList (Heap _ _ t) = foldMap return t
 instance Foldable Heap where
   foldMap _ Empty = mempty
   foldMap f l@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin l)
+#if __GLASGOW_HASKELL__ >= 710
+  null Empty = True
+  null _ = False
+
+  length = size
+#else
+
+-- | /O(1)/. Is the heap empty?
+--
+-- >>> null empty
+-- True
+--
+-- >>> null (singleton "hello")
+-- False
+null :: Heap a -> Bool
+null Empty = True
+null _ = False
+{-# INLINE null #-}
+
+#endif
+
+-- | /O(1)/. The number of elements in the heap.
+--
+-- >>> size empty
+-- 0
+-- >>> size (singleton "hello")
+-- 1
+-- >>> size (fromList [4,1,2])
+-- 3
+size :: Heap a -> Int
+size Empty = 0
+size (Heap s _ _) = s
+{-# INLINE size #-}
 
 -- | /O(n)/. Map a function over the heap, returning a new heap ordered appropriately for its fresh contents
 --
