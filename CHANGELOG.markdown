@@ -1,3 +1,8 @@
+0.3.2
+-----
+* Build without warnings on GHC 7.10
+* Overload Foldable `null` and `length` on GHC 7.10+
+
 0.3.1
 -----
 * Explicit nominal role annotation
