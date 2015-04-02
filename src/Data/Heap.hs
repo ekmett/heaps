@@ -112,7 +112,7 @@ data Heap a
   | Heap {-# UNPACK #-} !Int (a -> a -> Bool) {-# UNPACK #-} !(Tree a)
   deriving Typeable
 
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 707
 type role Heap nominal
 #endif
 
