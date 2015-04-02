@@ -1,3 +1,7 @@
+0.3.2.1
+-------
+* Haddock fix
+
 0.3.2
 -----
 * Build without warnings on GHC 7.10
