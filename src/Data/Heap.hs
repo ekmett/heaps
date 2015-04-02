@@ -1,12 +1,11 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 707
+#if __GLASGOW_HASKELL__ >= 707
 {-# LANGUAGE RoleAnnotations #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Data.Heap
--- Copyright   :  (c) Edward Kmett 2010
+-- Copyright   :  (c) Edward Kmett 2010-2015
 -- License     :  BSD-style
 -- Maintainer  :  ekmett@gmail.com
 -- Stability   :  experimental
