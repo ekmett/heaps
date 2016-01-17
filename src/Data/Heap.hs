@@ -254,13 +254,13 @@ replicate x0 y0
 --
 -- >>> uncons (fromList [2,1,3])
 -- Just (1,fromList [2,3])
-uncons :: Ord a => Heap a -> Maybe (a, Heap a)
+uncons :: Heap a -> Maybe (a, Heap a)
 uncons Empty = Nothing
 uncons l@(Heap _ _ t) = Just (root t, deleteMin l)
 {-# INLINE uncons #-}
 
 -- | Same as 'uncons'
-viewMin :: Ord a => Heap a -> Maybe (a, Heap a)
+viewMin :: Heap a -> Maybe (a, Heap a)
 viewMin = uncons
 {-# INLINE viewMin #-}
 
@@ -571,7 +571,7 @@ nub h@(Heap _ leq t) = insertWith leq x (nub zs)
 --
 -- >>> concatMap (\a -> fromList [a,a+1]) (fromList [1,4])
 -- fromList [1,4,5,2]
-concatMap :: Ord b => (a -> Heap b) -> Heap a -> Heap b
+concatMap :: (a -> Heap b) -> Heap a -> Heap b
 concatMap _ Empty = Empty
 concatMap f h@(Heap _ _ t) = foldMap f t
 {-# INLINE concatMap #-}

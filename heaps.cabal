@@ -1,5 +1,5 @@
 name:           heaps
-version:        0.3.2.1
+version:        0.3.3
 license:        BSD3
 license-file:   LICENSE
 author:         Edward A. Kmett
@@ -37,6 +37,4 @@ test-suite doctests
     doctest >= 0.9 && <= 0.10,
     filepath
   ghc-options: -Wall
-  if impl(ghc<7.6.1)
-    ghc-options: -Werror
   hs-source-dirs: tests
