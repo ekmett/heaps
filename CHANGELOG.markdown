@@ -1,3 +1,8 @@
+0.3.3
+-----
+* Remove redundant constraints
+* Build warning-free on GHC 8.0-rc1
+
 0.3.2.1
 -------
 * Haddock fix
