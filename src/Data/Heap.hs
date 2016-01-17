@@ -745,7 +745,14 @@ splitWithList _ Empty = (Empty, Empty)
 splitWithList f hp@(Heap _ leq _) = both (fromListWith leq) (f (toList hp))
 {-# INLINE splitWithList #-}
 
--- | explicit priority/payload tuples
+-- | Explicit priority/payload tuples. Useful to build a priority queue using
+-- a 'Heap', since the payload is ignored in the Eq/Ord instances.
+--
+-- @
+-- myHeap = 'fromList' ['Entry' 2 \"World", 'Entry' 1 \"Hello", 'Entry' 3 "!"]
+--
+-- ==> 'foldMap' 'payload' myHeap ≡ "HelloWorld!"
+-- @
 data Entry p a = Entry { priority :: p, payload :: a }
   deriving (Read,Show,Data,Typeable)
 
