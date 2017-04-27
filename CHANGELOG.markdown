@@ -1,5 +1,5 @@
-next
-----
+0.3.4.1
+-------
 * Fix a typo in the `doctests` for `mapMonotonic`
 
 0.3.4
