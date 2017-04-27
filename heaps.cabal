@@ -16,6 +16,12 @@ build-type:     Custom
 cabal-version:  >=1.8
 extra-source-files: HLint.hs .gitignore .travis.yml CHANGELOG.markdown README.markdown
 
+custom-setup
+  setup-depends:
+    base          >= 4.3 && <5,
+    Cabal         >= 1.10,
+    cabal-doctest >= 1 && <1.1
+
 source-repository head
   type: git
   location: git://github.com/ekmett/heaps.git
@@ -33,7 +39,7 @@ test-suite doctests
   main-is: doctests.hs
   build-depends:
     base,
-    directory >= 1.0 && < 1.3,
+    directory >= 1.0 && < 1.4,
     doctest >= 0.9 && <= 0.12,
     filepath
   ghc-options: -Wall

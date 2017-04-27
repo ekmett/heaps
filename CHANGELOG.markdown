@@ -1,3 +1,14 @@
+next
+----
+* Revamp `Setup.hs` to use `cabal-doctest`. This makes it build
+  with `Cabal-1.25`, and makes the `doctest`s work with `cabal new-build` and
+  sandboxes.
+
+0.3.3
+-----
+* Remove redundant constraints
+* Build warning-free on GHC 8.0-rc1
+
 0.3.2.1
 -------
 * Haddock fix
