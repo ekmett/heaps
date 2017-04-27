@@ -443,9 +443,9 @@ map f (Heap _ _ t) = foldMap (singleton . f) t
 -- | /O(n)/. Map a monotone increasing function over the heap.
 -- Provides a better constant factor for performance than 'map', but no checking is performed that the function provided is monotone increasing. Misuse of this function can cause a Heap to violate the heap property.
 --
--- >>> map (+1) (fromList [1,2,3])
+-- >>> mapMonotonic (+1) (fromList [1,2,3])
 -- fromList [2,3,4]
--- >>> map (*2) (fromList [1,2,3])
+-- >>> mapMonotonic (*2) (fromList [1,2,3])
 -- fromList [2,4,6]
 mapMonotonic :: Ord b => (a -> b) -> Heap a -> Heap b
 mapMonotonic _ Empty = Empty

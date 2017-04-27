@@ -1,3 +1,7 @@
+next
+----
+* Fix a typo in the `doctests` for `mapMonotonic`
+
 0.3.4
 -----
 * Add `Bifunctor Entry` instance
