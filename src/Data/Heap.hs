@@ -88,6 +88,9 @@ import Prelude hiding
     , traverse
 #endif
     )
+#if MIN_VERSION_base(4,8,0)
+import Data.Bifunctor
+#endif
 import qualified Data.List as L
 import Control.Applicative (Applicative(pure))
 import Control.Monad (liftM)
@@ -759,6 +762,11 @@ data Entry p a = Entry { priority :: p, payload :: a }
 instance Functor (Entry p) where
   fmap f (Entry p a) = Entry p (f a)
   {-# INLINE fmap #-}
+
+#if MIN_VERSION_base(4,8,0)
+instance Bifunctor Entry where
+  bimap f g (Entry p a) = Entry (f p) (g a)
+#endif
 
 instance Foldable (Entry p) where
   foldMap f (Entry _ a) = f a
