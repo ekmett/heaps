@@ -1,3 +1,14 @@
+0.3.4.1
+-------
+* Fix a typo in the `doctests` for `mapMonotonic`
+
+0.3.4
+-----
+* Add `Bifunctor Entry` instance
+* Revamp `Setup.hs` to use `cabal-doctest`. This makes it build
+  with `Cabal-2.0`, and makes the `doctest`s work with `cabal new-build` and
+  sandboxes.
+
 0.3.3
 -----
 * Remove redundant constraints

@@ -88,6 +88,9 @@ import Prelude hiding
     , traverse
 #endif
     )
+#if MIN_VERSION_base(4,8,0)
+import Data.Bifunctor
+#endif
 import qualified Data.List as L
 import Control.Applicative (Applicative(pure))
 import Control.Monad (liftM)
@@ -440,9 +443,9 @@ map f (Heap _ _ t) = foldMap (singleton . f) t
 -- | /O(n)/. Map a monotone increasing function over the heap.
 -- Provides a better constant factor for performance than 'map', but no checking is performed that the function provided is monotone increasing. Misuse of this function can cause a Heap to violate the heap property.
 --
--- >>> map (+1) (fromList [1,2,3])
+-- >>> mapMonotonic (+1) (fromList [1,2,3])
 -- fromList [2,3,4]
--- >>> map (*2) (fromList [1,2,3])
+-- >>> mapMonotonic (*2) (fromList [1,2,3])
 -- fromList [2,4,6]
 mapMonotonic :: Ord b => (a -> b) -> Heap a -> Heap b
 mapMonotonic _ Empty = Empty
@@ -759,6 +762,11 @@ data Entry p a = Entry { priority :: p, payload :: a }
 instance Functor (Entry p) where
   fmap f (Entry p a) = Entry p (f a)
   {-# INLINE fmap #-}
+
+#if MIN_VERSION_base(4,8,0)
+instance Bifunctor Entry where
+  bimap f g (Entry p a) = Entry (f p) (g a)
+#endif
 
 instance Foldable (Entry p) where
   foldMap f (Entry _ a) = f a
