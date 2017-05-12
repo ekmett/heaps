@@ -14,7 +14,13 @@ copyright:      (c) 2010-2015 Edward A. Kmett
 tested-with:    GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2, GHC == 8.2.1
 build-type:     Custom
 cabal-version:  >=1.8
-extra-source-files: HLint.hs .gitignore .travis.yml CHANGELOG.markdown README.markdown
+extra-source-files:
+  HLint.hs
+  Warning.hs
+  .gitignore
+  .travis.yml
+  CHANGELOG.markdown
+  README.markdown
 
 custom-setup
   setup-depends:
