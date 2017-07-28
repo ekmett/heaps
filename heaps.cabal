@@ -46,7 +46,8 @@ test-suite doctests
   build-depends:
     base,
     directory >= 1.0 && < 1.4,
-    doctest >= 0.9 && <= 0.12,
-    filepath
+    doctest >= 0.9 && < 0.13,
+    filepath,
+    heaps
   ghc-options: -Wall
   hs-source-dirs: tests
