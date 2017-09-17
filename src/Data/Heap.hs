@@ -94,6 +94,9 @@ import Data.Bifunctor
 import qualified Data.List as L
 import Control.Applicative (Applicative(pure))
 import Control.Monad (liftM)
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup(..))
+#endif
 import Data.Monoid (Monoid(mappend, mempty))
 import Data.Foldable hiding (minimum, concatMap)
 import Data.Function (on)
@@ -377,11 +380,19 @@ sort :: Ord a => [a] -> [a]
 sort = toList . fromList
 {-# INLINE sort #-}
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup (Heap a) where
+  (<>) = union
+  {-# INLINE (<>) #-}
+#endif
+
 instance Monoid (Heap a) where
   mempty = empty
   {-# INLINE mempty #-}
+#if !(MIN_VERSION_base(4,11,0))
   mappend = union
   {-# INLINE mappend #-}
+#endif
 
 -- | /O(n)/. Returns the elements in the heap in some arbitrary, very likely unsorted, order.
 --
