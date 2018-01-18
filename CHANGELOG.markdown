@@ -1,3 +1,7 @@
+0.3.6 [2018.01.18]
+------------------
+* Add `Semigroup` instance for `Heap`.
+
 0.3.5
 -----
 * Support `doctest-0.12`
