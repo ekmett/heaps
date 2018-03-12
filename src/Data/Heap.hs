@@ -545,7 +545,7 @@ break = splitWithList . L.break
 -- >>> span (\x -> x `mod` 4 == 0) (fromList [4,8,12,14,16])
 -- (fromList [4,8,12],fromList [14,16])
 --
--- 'span' @p xs@ is equivalent to @('takeWhile' p xs, 'dropWhile p xs)@
+-- 'span' @p xs@ is equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 
 span :: (a -> Bool) -> Heap a -> (Heap a, Heap a)
 span = splitWithList . L.span
