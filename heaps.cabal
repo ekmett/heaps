@@ -20,6 +20,7 @@ tested-with:    GHC == 7.0.4
               , GHC == 8.0.2
               , GHC == 8.2.2
               , GHC == 8.4.3
+              , GHC == 8.6.1
 build-type:     Custom
 cabal-version:  >=1.8
 extra-source-files:
