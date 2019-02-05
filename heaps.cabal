@@ -1,5 +1,5 @@
 name:           heaps
-version:        0.3.6
+version:        0.3.6.1
 license:        BSD3
 license-file:   LICENSE
 author:         Edward A. Kmett
@@ -21,7 +21,7 @@ tested-with:    GHC == 7.0.4
               , GHC == 8.2.2
               , GHC == 8.4.4
               , GHC == 8.6.3
-build-type:     Custom
+build-type:     Simple
 cabal-version:  >=1.8
 extra-source-files:
   HLint.hs
@@ -30,12 +30,6 @@ extra-source-files:
   .travis.yml
   CHANGELOG.markdown
   README.markdown
-
-custom-setup
-  setup-depends:
-    base          >= 4.3 && <5,
-    Cabal         >= 1.10,
-    cabal-doctest >= 1 && <1.1
 
 source-repository head
   type: git
@@ -47,16 +41,3 @@ library
     base >= 4 && < 6
   hs-source-dirs: src
   ghc-options: -O2
-
--- Verify the results of the examples
-test-suite doctests
-  type:    exitcode-stdio-1.0
-  main-is: doctests.hs
-  build-depends:
-    base,
-    directory >= 1.0 && < 1.4,
-    doctest >= 0.9 && < 0.17,
-    filepath,
-    heaps
-  ghc-options: -Wall
-  hs-source-dirs: tests

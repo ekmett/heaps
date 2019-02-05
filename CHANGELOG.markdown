@@ -1,3 +1,7 @@
+0.3.6.1
+-------
+* Change to `build-type: Simple`
+
 0.3.6 [2018.01.18]
 ------------------
 * Add `Semigroup` instance for `Heap`.
