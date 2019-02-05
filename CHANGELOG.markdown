@@ -1,6 +1,9 @@
 0.3.6.1
 -------
-* Change to `build-type: Simple`
+* Change to `build-type: Simple`, and drop the `doctests` test suite. This was
+  done in an effort to make `heaps`' dependency footprint as minimal as
+  possible, since `heaps` is used to bootstrap `shake`.
+* Fix the Haddocks for `span`.
 
 0.3.6 [2018.01.18]
 ------------------
