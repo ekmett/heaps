@@ -25,9 +25,9 @@ tested-with:    GHC == 7.0.4
 build-type:     Simple
 cabal-version:  >=1.8
 extra-source-files:
-  HLint.hs
   Warning.hs
   .gitignore
+  .hlint.yaml
   .travis.yml
   CHANGELOG.markdown
   README.markdown
