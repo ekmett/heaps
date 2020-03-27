@@ -440,7 +440,7 @@ instance Monoid (Heap a) where
 -- @'fromList' '.' 'toUnsortedList' ≡ 'id'@
 toUnsortedList :: Heap a -> [a]
 toUnsortedList Empty = []
-toUnsortedList (Heap _ _ t) = foldMap return t
+toUnsortedList (Heap _ _ t) = toList t
 {-# INLINE toUnsortedList #-}
 
 -- | /O(n log n)/. Returns the elements in the heap in ascending order.
@@ -456,7 +456,10 @@ toDescList = foldl (flip (:)) []
 -- | Folds in ascending order.
 instance Foldable Heap where
   foldMap _ Empty = mempty
-  foldMap f l@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin l)
+  foldMap f h@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin h)
+
+  foldr _ acc Empty = acc
+  foldr f acc h@(Heap _ _ t) = f (root t) (foldr f (deleteMin h))
 #if __GLASGOW_HASKELL__ >= 710
   null Empty = True
   null _ = False
@@ -464,6 +467,25 @@ instance Foldable Heap where
 
   length = size
   {-# INLINE length #-}
+
+  elem _ Empty = False
+  elem x (Heap _ _ t) = elem x t
+  {-# INLINE elem #-}
+
+  maximum Empty = error "maximum: empty heap"
+  maximum (Heap _ _ t) = maximum t
+  {-# INLINE maximum #-}
+
+  minimum = minimum
+  {-# INLINE minimum #-}
+
+  sum Empty = 0
+  sum (Heap _ _ t) = sum t
+  {-# INLINE sum #-}
+
+  product Empty = 1
+  product (Heap _ _ t) = product t
+  {-# INLINE product #-}
 #else
 
 -- | /O(1)/. Is the heap empty?
@@ -833,6 +855,8 @@ instance Bifunctor Entry where
 instance Foldable (Entry p) where
   foldMap f (Entry _ a) = f a
   {-# INLINE foldMap #-}
+
+  foldr f acc (Entry _ a) = f a acc
 
 instance Traversable (Entry p) where
   traverse f (Entry p a) = Entry p `fmap` f a
