@@ -12,7 +12,7 @@
 -- Portability :  portable
 --
 -- An efficient, asymptotically optimal, implementation of a priority queues
--- extended with support for efficient size, and `Data.Foldable`
+-- extended with support for efficient size and `Data.Foldable`.
 --
 -- /Note/: Since many function names (but not the type name) clash with
 -- "Prelude" names, this module is usually imported @qualified@, e.g.
@@ -52,6 +52,8 @@ module Data.Heap
     , map               -- O(n) :: Ord b => (a -> b) -> Heap a -> Heap b
     -- * To/From Lists
     , toUnsortedList    -- O(n) :: Heap a -> [a]
+    , toAscList         -- O(n log n) :: Heap a -> [a]
+    , toDescList        -- O(n log n) :: Heap a -> [a]
     , fromList          -- O(n) :: Ord a => [a] -> Heap a
     , sort              -- O(n log n) :: Ord a => [a] -> [a]
     , traverse          -- O(n log n) :: (Applicative t, Ord b) => (a -> t b) -> Heap a -> t (Heap b)
@@ -425,6 +427,17 @@ toUnsortedList Empty = []
 toUnsortedList (Heap _ _ t) = foldMap return t
 {-# INLINE toUnsortedList #-}
 
+-- | /O(n log n)/. Returns the elements in the heap in ascending order.
+toAscList :: Heap a -> [a]
+toAscList = foldr (:) []
+{-# INLINE toAscList #-}
+
+-- | /O(n log n)/. Returns the elements in the heap in descending order.
+toDescList :: Heap a -> [a]
+toDescList = foldl (flip (:)) []
+{-# INLINE toDescList #-}
+
+-- | Folds in ascending order.
 instance Foldable Heap where
   foldMap _ Empty = mempty
   foldMap f l@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin l)
