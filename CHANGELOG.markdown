@@ -1,3 +1,9 @@
+0.3.7
+-----
+* Add `unions`, `lookupMin`, `toAscList`, `toDescList`, `updateMin`
+* Expose `adjustMin`
+* Improve performance of `Foldable` functions (`foldr`, `elem`, `maximum`, `minimum`, `sum`, `product`)
+
 0.3.6.1
 -------
 * Change to `build-type: Simple`, and drop the `doctests` test suite. This was

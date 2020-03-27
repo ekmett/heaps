@@ -459,7 +459,7 @@ instance Foldable Heap where
   foldMap f h@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin h)
 
   foldr _ acc Empty = acc
-  foldr f acc h@(Heap _ _ t) = f (root t) (foldr f (deleteMin h))
+  foldr f acc h@(Heap _ _ t) = f (root t) (foldr f acc (deleteMin h))
 #if __GLASGOW_HASKELL__ >= 710
   null Empty = True
   null _ = False
