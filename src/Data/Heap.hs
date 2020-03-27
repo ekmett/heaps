@@ -41,9 +41,11 @@ module Data.Heap
     , size              -- O(1) :: Heap a -> Int
     , singleton         -- O(1) :: Ord a => a -> Heap a
     , insert            -- O(1) :: Ord a => a -> Heap a -> Heap a
-    , minimum           -- O(1) (/partial/) :: Ord a => Heap a -> a
+    , lookupMin         -- O(1) :: Heap a -> Maybe a
+    , minimum           -- O(1) (/partial/) :: Heap a -> a
     , deleteMin         -- O(log n) :: Heap a -> Heap a
     , union             -- O(1) :: Heap a -> Heap a -> Heap a
+    , unions            -- O(n) :: Foldable f => f (Heap a) -> Heap a
     , uncons, viewMin   -- O(1)\/O(log n) :: Heap a -> Maybe (a, Heap a)
     -- * Transformations
     , mapMonotonic      -- O(n) :: Ord b => (a -> b) -> Heap a -> Heap b
@@ -235,6 +237,15 @@ union (Heap s1 leq t1@(Node _ x1 f1)) (Heap s2 _ t2@(Node _ x2 f2))
   | otherwise = Heap (s1 + s2) leq (Node 0 x2 (skewInsert leq t1 f2))
 {-# INLINE union #-}
 
+-- | /O(n)/. Meld the value from a foldable of heaps into one heap.
+--
+-- @
+-- 'unions' = 'foldl' 'union' 'empty'
+-- @
+unions :: Foldable f => f (Heap a) -> Heap a
+unions = foldl' union empty
+{-# INLINE unions #-}
+
 -- | /O(log n)/. Create a heap consisting of multiple copies of the same value.
 --
 -- >>> replicate 'a' 10
@@ -269,6 +280,15 @@ uncons l@(Heap _ _ t) = Just (root t, deleteMin l)
 viewMin :: Heap a -> Maybe (a, Heap a)
 viewMin = uncons
 {-# INLINE viewMin #-}
+
+-- | /O(1)/. The minimal element of the heap. Returns 'Nothing' if the heap is empty.
+--
+-- >>> lookupMin (fromList [3, 1, 2])
+-- Just 1
+lookupMin :: Heap a -> Maybe a
+lookupMin Empty = Nothing
+lookupMin (Heap _ _ t) = Just (root t)
+{-# INLINE lookupMin #-}
 
 -- | /O(1)/. Assumes the argument is a non-'null' heap.
 --
@@ -411,8 +431,10 @@ instance Foldable Heap where
 #if __GLASGOW_HASKELL__ >= 710
   null Empty = True
   null _ = False
+  {-# INLINE null #-}
 
   length = size
+  {-# INLINE length #-}
 #else
 
 -- | /O(1)/. Is the heap empty?
