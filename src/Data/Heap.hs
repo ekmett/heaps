@@ -44,6 +44,8 @@ module Data.Heap
     , lookupMin         -- O(1) :: Heap a -> Maybe a
     , minimum           -- O(1) (/partial/) :: Heap a -> a
     , deleteMin         -- O(log n) :: Heap a -> Heap a
+    , adjustMin         -- O(log n) :: (a -> a) -> Heap a -> Heap a
+    , updateMin         -- O(log n) :: (a -> Maybe a) -> Heap a -> Heap a
     , union             -- O(1) :: Heap a -> Heap a -> Heap a
     , unions            -- O(n) :: Foldable f => f (Heap a) -> Heap a
     , uncons, viewMin   -- O(1)\/O(log n) :: Heap a -> Maybe (a, Heap a)
@@ -285,7 +287,7 @@ viewMin = uncons
 
 -- | /O(1)/. The minimal element of the heap. Returns 'Nothing' if the heap is empty.
 --
--- >>> lookupMin (fromList [3, 1, 2])
+-- >>> lookupMin (fromList [3,1,2])
 -- Just 1
 lookupMin :: Heap a -> Maybe a
 lookupMin Empty = Nothing
@@ -328,6 +330,20 @@ adjustMin :: (a -> a) -> Heap a -> Heap a
 adjustMin _ Empty = Empty
 adjustMin f (Heap s leq (Node r x xs)) = Heap s leq (heapify leq (Node r (f x) xs))
 {-# INLINE adjustMin #-}
+
+-- | /O(log n)/. Update the minimum key in the heap and return the resulting heap.
+-- If @f x@ is 'Nothing', the minimum key is deleted.
+--
+-- >>> updateMin (Just . (+1)) (fromList [1,2,3])
+-- fromList [2,2,3]
+-- >>> updateMin (const Nothing) (fromList [1,2,3])
+-- fromList [2,3]
+updateMin :: (a -> Maybe a) -> Heap a -> Heap a
+updateMin _ Empty = Empty
+updateMin f h@(Heap s leq (Node r x xs)) = case f x of
+  Nothing -> deleteMin h
+  Just x' -> Heap s leq (heapify leq (Node r x' xs))
+{-# INLINE updateMin #-}
 
 type ForestZipper a = (Forest a, Forest a)
 
