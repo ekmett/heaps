@@ -86,7 +86,7 @@ module Data.Heap
 import Prelude hiding
     ( map
     , span, dropWhile, takeWhile, break, filter, take, drop, splitAt
-    , foldr, minimum, replicate, mapM
+    , foldl, foldr, minimum, replicate, mapM
     , concatMap
 #if __GLASGOW_HASKELL__ < 710
     , null
@@ -857,6 +857,7 @@ instance Foldable (Entry p) where
   {-# INLINE foldMap #-}
 
   foldr f acc (Entry _ a) = f a acc
+  {-# INLINE foldr #-}
 
 instance Traversable (Entry p) where
   traverse f (Entry p a) = Entry p `fmap` f a
