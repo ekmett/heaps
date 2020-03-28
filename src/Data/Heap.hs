@@ -180,7 +180,7 @@ instance Ord (Heap a) where
 
 
 
--- | /O(1)/. The empty heap
+-- | /O(1)/. The empty heap.
 --
 -- @'empty' ≡ 'fromList' []@
 --
@@ -190,7 +190,7 @@ empty :: Heap a
 empty = Empty
 {-# INLINE empty #-}
 
--- | /O(1)/. A heap with a single element
+-- | /O(1)/. A heap with a single element.
 --
 -- @
 -- 'singleton' x ≡ 'fromList' [x]
@@ -280,7 +280,7 @@ uncons Empty = Nothing
 uncons l@(Heap _ _ t) = Just (root t, deleteMin l)
 {-# INLINE uncons #-}
 
--- | Same as 'uncons'
+-- | Same as 'uncons'.
 viewMin :: Heap a -> Maybe (a, Heap a)
 viewMin = uncons
 {-# INLINE viewMin #-}
@@ -413,7 +413,7 @@ fromListWith :: (a -> a -> Bool) -> [a] -> Heap a
 fromListWith f = foldr (insertWith f) mempty
 {-# INLINE fromListWith #-}
 
--- | /O(n log n)/. Perform a heap sort
+-- | /O(n log n)/. Perform a heap sort.
 sort :: Ord a => [a] -> [a]
 sort = toList . fromList
 {-# INLINE sort #-}
@@ -515,7 +515,7 @@ size Empty = 0
 size (Heap s _ _) = s
 {-# INLINE size #-}
 
--- | /O(n)/. Map a function over the heap, returning a new heap ordered appropriately for its fresh contents
+-- | /O(n)/. Map a function over the heap, returning a new heap ordered appropriately for its fresh contents.
 --
 -- >>> map negate (fromList [3,1,2])
 -- fromList [-3,-1,-2]
@@ -618,7 +618,7 @@ break = splitWithList . L.break
 -- >>> span (\x -> x `mod` 4 == 0) (fromList [4,8,12,14,16])
 -- (fromList [4,8,12],fromList [14,16])
 --
--- 'span' @p xs@ is equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
+-- 'span' @p xs@ is equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@.
 
 span :: (a -> Bool) -> Heap a -> (Heap a, Heap a)
 span = splitWithList . L.span
@@ -682,7 +682,7 @@ groupBy f h@(Heap _ leq t) = insert (insertWith leq x ys) (groupBy f zs)
     (ys,zs) = span (f x) xs
 {-# INLINE groupBy #-}
 
--- | /O(n log n + m log m)/. Intersect the values in two heaps, returning the value in the left heap that compares as equal
+-- | /O(n log n + m log m)/. Intersect the values in two heaps, returning the value in the left heap that compares as equal.
 intersect :: Heap a -> Heap a -> Heap a
 intersect Empty _ = Empty
 intersect _ Empty = Empty
@@ -698,7 +698,7 @@ intersect a@(Heap _ leq _) b = go leq (toList a) (toList b)
     go _ _ [] = empty
 {-# INLINE intersect #-}
 
--- | /O(n log n + m log m)/. Intersect the values in two heaps using a function to generate the elements in the right heap.
+-- | /O(n log n + m log m)/. Intersect the values in two heaps using a function to generate the elements in the resulting heap.
 intersectWith :: Ord b => (a -> a -> b) -> Heap a -> Heap a -> Heap b
 intersectWith _ Empty _ = Empty
 intersectWith _ _ Empty = Empty
