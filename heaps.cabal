@@ -29,7 +29,6 @@ extra-source-files:
   Warning.hs
   .gitignore
   .hlint.yaml
-  .travis.yml
   CHANGELOG.markdown
   README.markdown
 
