@@ -43,6 +43,7 @@ module Data.Heap
     , insert            -- O(1) :: Ord a => a -> Heap a -> Heap a
     , minimum           -- O(1) (/partial/) :: Ord a => Heap a -> a
     , deleteMin         -- O(log n) :: Heap a -> Heap a
+    , adjustMin         -- O(log n) :: (a -> a) -> Heap a -> Heap a
     , union             -- O(1) :: Heap a -> Heap a -> Heap a
     , uncons, viewMin   -- O(1)\/O(log n) :: Heap a -> Maybe (a, Heap a)
     -- * Transformations
