@@ -2,8 +2,8 @@ next [????.??.??]
 -----------------
 * Export `adjustMin`.
 
-0.3.6.1
--------
+0.3.6.1 [2019.02.05]
+--------------------
 * Change to `build-type: Simple`, and drop the `doctests` test suite. This was
   done in an effort to make `heaps`' dependency footprint as minimal as
   possible, since `heaps` is used to bootstrap `shake`.
