@@ -83,30 +83,32 @@ import Prelude hiding
     , span, dropWhile, takeWhile, break, filter, take, drop, splitAt
     , foldr, minimum, replicate, mapM
     , concatMap
-#if __GLASGOW_HASKELL__ < 710
+#if !(MIN_VERSION_base(4,8,0))
     , null
 #else
     , traverse
 #endif
     )
-#if MIN_VERSION_base(4,8,0)
-import Data.Bifunctor
-#endif
-import qualified Data.List as L
-import Control.Applicative (Applicative(pure))
 import Control.Monad (liftM)
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup(..))
-#endif
-import Data.Monoid (Monoid(mappend, mempty))
+import Data.Data (DataType, Constr, mkConstr, mkDataType, Fixity(Prefix), Data(..), constrIndex)
 import Data.Foldable hiding (minimum, concatMap)
 import Data.Function (on)
-import Data.Data (DataType, Constr, mkConstr, mkDataType, Fixity(Prefix), Data(..), constrIndex)
+import qualified Data.List as L
+import qualified Data.Traversable as Traversable
 import Data.Typeable (Typeable)
 import Text.Read
-import Text.Show
-import qualified Data.Traversable as Traversable
+
+#if MIN_VERSION_base(4,8,0)
+import Data.Bifunctor
+#else
+import Control.Applicative (Applicative)
+import Data.Monoid (Monoid(mappend, mempty))
 import Data.Traversable (Traversable)
+#endif
+
+#if MIN_VERSION_base(4,9,0) && !(MIN_VERSION_base(4,11,0))
+import Data.Semigroup (Semigroup(..))
+#endif
 
 -- The implementation of 'Heap' must internally hold onto the dictionary entry for ('<='),
 -- so that it can be made 'Foldable'. Confluence in the absence of incoherent instances
@@ -169,9 +171,9 @@ instance Ord (Heap a) where
                then go f xs ys
                else LT
           else GT
-      go f [] []    = EQ
-      go f [] (_:_) = LT
-      go f (_:_) [] = GT
+      go _ [] []    = EQ
+      go _ [] (_:_) = LT
+      go _ (_:_) [] = GT
 
 
 
@@ -323,12 +325,13 @@ emptyZ = (Nil, Nil)
 
 rightZ :: ForestZipper a -> ForestZipper a
 rightZ (path, x `Cons` xs) = (x `Cons` path, xs)
+rightZ _ = error "Heap.rightZ: empty zipper"
 {-# INLINE rightZ #-}
 
-adjustZ :: (Tree a -> Tree a) -> ForestZipper a -> ForestZipper a
-adjustZ f (path, x `Cons` xs) = (path, f x `Cons` xs)
-adjustZ _ z = z
-{-# INLINE adjustZ #-}
+-- adjustZ :: (Tree a -> Tree a) -> ForestZipper a -> ForestZipper a
+-- adjustZ f (path, x `Cons` xs) = (path, f x `Cons` xs)
+-- adjustZ _ z = z
+-- {-# INLINE adjustZ #-}
 
 rezip :: ForestZipper a -> Forest a
 rezip (Nil, xs) = xs
@@ -499,8 +502,8 @@ partition p (Heap _ leq t) = foldMap f t
 -- >>> split 'h' (fromList "hello")
 -- (fromList "e",fromList "h",fromList "llo")
 split :: a -> Heap a -> (Heap a, Heap a, Heap a)
-split a Empty = (Empty, Empty, Empty)
-split a (Heap s leq t) = foldMap f t
+split _ Empty = (Empty, Empty, Empty)
+split a (Heap _ leq t) = foldMap f t
   where
     f x = if leq x a
           then if leq a x
@@ -588,7 +591,7 @@ nub h@(Heap _ leq t) = insertWith leq x (nub zs)
 -- fromList [1,4,5,2]
 concatMap :: (a -> Heap b) -> Heap a -> Heap b
 concatMap _ Empty = Empty
-concatMap f h@(Heap _ _ t) = foldMap f t
+concatMap f (Heap _ _ t) = foldMap f t
 {-# INLINE concatMap #-}
 
 -- | /O(n log n)/. Group a heap into a heap of heaps, by unioning together duplicates.
@@ -602,7 +605,7 @@ group h@(Heap _ leq _) = groupBy (flip leq) h
 
 -- | /O(n log n)/. Group using a user supplied function.
 groupBy :: (a -> a -> Bool) -> Heap a -> Heap (Heap a)
-groupBy f Empty = Empty
+groupBy _ Empty = Empty
 groupBy f h@(Heap _ leq t) = insert (insertWith leq x ys) (groupBy f zs)
   where
     x = root t
