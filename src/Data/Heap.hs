@@ -82,19 +82,17 @@ import Prelude hiding
     ( map
     , span, dropWhile, takeWhile, break, filter, take, drop, splitAt
     , foldr, minimum, replicate, mapM
-    , concatMap
-#if !(MIN_VERSION_base(4,8,0))
-    , null
-#else
+    , concatMap, null
+#if MIN_VERSION_base(4,8,0)
     , traverse
 #endif
     )
 import Control.Monad (liftM)
 import Data.Data (DataType, Constr, mkConstr, mkDataType, Fixity(Prefix), Data(..), constrIndex)
-import Data.Foldable hiding (minimum, concatMap)
+import qualified Data.Foldable as F
 import Data.Function (on)
 import qualified Data.List as L
-import qualified Data.Traversable as Traversable
+import qualified Data.Traversable as T
 import Data.Typeable (Typeable)
 import Text.Read
 
@@ -102,6 +100,7 @@ import Text.Read
 import Data.Bifunctor
 #else
 import Control.Applicative (Applicative)
+import Data.Foldable (Foldable)
 import Data.Monoid (Monoid(mappend, mempty))
 import Data.Traversable (Traversable)
 #endif
@@ -109,6 +108,22 @@ import Data.Traversable (Traversable)
 #if MIN_VERSION_base(4,9,0) && !(MIN_VERSION_base(4,11,0))
 import Data.Semigroup (Semigroup(..))
 #endif
+
+-- $setup
+-- >>> let break     = Data.Heap.break
+-- >>> let concatMap = Data.Heap.concatMap
+-- >>> let dropWhile = Data.Heap.dropWhile
+-- >>> let filter    = Data.Heap.filter
+-- >>> let minimum   = Data.Heap.minimum
+-- >>> let null      = Data.Heap.null
+-- >>> let span      = Data.Heap.span
+-- >>> let take      = Data.Heap.take
+-- >>> let takeWhile = Data.Heap.takeWhile
+--
+-- -- GHC 7.0 and 7.2 will default the `Ord` constraints to () in the types of
+-- -- the following functions unless we give them explicit type signatures.
+-- >>> let { map :: Ord b => (a -> b) -> Heap a -> Heap b; map = Data.Heap.map }
+-- >>> let { replicate :: Ord a => a -> Int -> Heap a ; replicate = Data.Heap.replicate }
 
 -- The implementation of 'Heap' must internally hold onto the dictionary entry for ('<='),
 -- so that it can be made 'Foldable'. Confluence in the absence of incoherent instances
@@ -128,7 +143,7 @@ type role Heap nominal
 instance Show a => Show (Heap a) where
   showsPrec _ Empty = showString "fromList []"
   showsPrec d (Heap _ _ t) = showParen (d > 10) $
-    showString "fromList " .  showsPrec 11 (toList t)
+    showString "fromList " .  showsPrec 11 (F.toList t)
 
 instance (Ord a, Read a) => Read (Heap a) where
   readPrec = parens $ prec 10 $ do
@@ -153,7 +168,7 @@ instance Eq (Heap a) where
   Empty == Empty = True
   Empty == Heap{} = False
   Heap{} == Empty = False
-  a@(Heap s1 leq _) == b@(Heap s2 _ _) = s1 == s2 && go leq (toList a) (toList b)
+  a@(Heap s1 leq _) == b@(Heap s2 _ _) = s1 == s2 && go leq (F.toList a) (F.toList b)
     where
       go f (x:xs) (y:ys) = f x y && f y x && go f xs ys
       go _ [] [] = True
@@ -163,7 +178,7 @@ instance Ord (Heap a) where
   Empty `compare` Empty = EQ
   Empty `compare` Heap{} = LT
   Heap{} `compare` Empty = GT
-  a@(Heap _ leq _) `compare` b = go leq (toList a) (toList b)
+  a@(Heap _ leq _) `compare` b = go leq (F.toList a) (F.toList b)
     where
       go f (x:xs) (y:ys) =
           if f x y
@@ -298,7 +313,7 @@ deleteMin (Heap s leq (Node _ _ f0)) = Heap (s - 1) leq (Node 0 x f3)
     (Node r x cf, ts2) = getMin leq f0
     (zs, ts1, f1) = splitForest r Nil Nil cf
     f2 = skewMeld leq (skewMeld leq ts1 ts2) f1
-    f3 = foldr (skewInsert leq) f2 (trees zs)
+    f3 = F.foldr (skewInsert leq) f2 (trees zs)
 {-# INLINE deleteMin #-}
 
 -- | /O(log n)/. Adjust the minimum key in the heap and return the resulting heap.
@@ -372,16 +387,16 @@ heapify leq n@(Node r a as)
 -- >>> size (fromList [1,5,3])
 -- 3
 fromList :: Ord a => [a] -> Heap a
-fromList = foldr insert mempty
+fromList = F.foldr insert mempty
 {-# INLINE fromList #-}
 
 fromListWith :: (a -> a -> Bool) -> [a] -> Heap a
-fromListWith f = foldr (insertWith f) mempty
+fromListWith f = F.foldr (insertWith f) mempty
 {-# INLINE fromListWith #-}
 
 -- | /O(n log n)/. Perform a heap sort
 sort :: Ord a => [a] -> [a]
-sort = toList . fromList
+sort = F.toList . fromList
 {-# INLINE sort #-}
 
 #if MIN_VERSION_base(4,9,0)
@@ -406,18 +421,16 @@ instance Monoid (Heap a) where
 -- @'fromList' '.' 'toUnsortedList' ≡ 'id'@
 toUnsortedList :: Heap a -> [a]
 toUnsortedList Empty = []
-toUnsortedList (Heap _ _ t) = foldMap return t
+toUnsortedList (Heap _ _ t) = F.foldMap return t
 {-# INLINE toUnsortedList #-}
 
 instance Foldable Heap where
   foldMap _ Empty = mempty
-  foldMap f l@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin l)
-#if __GLASGOW_HASKELL__ >= 710
-  null Empty = True
-  null _ = False
-
+  foldMap f l@(Heap _ _ t) = f (root t) `mappend` F.foldMap f (deleteMin l)
+#if MIN_VERSION_base(4,8,0)
+  null = null
   length = size
-#else
+#endif
 
 -- | /O(1)/. Is the heap empty?
 --
@@ -430,8 +443,6 @@ null :: Heap a -> Bool
 null Empty = True
 null _ = False
 {-# INLINE null #-}
-
-#endif
 
 -- | /O(1)/. The number of elements in the heap.
 --
@@ -452,7 +463,7 @@ size (Heap s _ _) = s
 -- fromList [-3,-1,-2]
 map :: Ord b => (a -> b) -> Heap a -> Heap b
 map _ Empty = Empty
-map f (Heap _ _ t) = foldMap (singleton . f) t
+map f (Heap _ _ t) = F.foldMap (singleton . f) t
 {-# INLINE map #-}
 
 -- | /O(n)/. Map a monotone increasing function over the heap.
@@ -479,7 +490,7 @@ mapMonotonic f (Heap s _ t) = Heap s (<=) (fmap f t)
 -- fromList []
 filter :: (a -> Bool) -> Heap a -> Heap a
 filter _ Empty = Empty
-filter p (Heap _ leq t) = foldMap f t
+filter p (Heap _ leq t) = F.foldMap f t
   where
     f x | p x = singletonWith leq x
         | otherwise = Empty
@@ -491,7 +502,7 @@ filter p (Heap _ leq t) = foldMap f t
 -- (fromList "b",fromList "a")
 partition :: (a -> Bool) -> Heap a -> (Heap a, Heap a)
 partition _ Empty = (Empty, Empty)
-partition p (Heap _ leq t) = foldMap f t
+partition p (Heap _ leq t) = F.foldMap f t
   where
     f x | p x       = (singletonWith leq x, mempty)
         | otherwise = (mempty, singletonWith leq x)
@@ -503,7 +514,7 @@ partition p (Heap _ leq t) = foldMap f t
 -- (fromList "e",fromList "h",fromList "llo")
 split :: a -> Heap a -> (Heap a, Heap a, Heap a)
 split _ Empty = (Empty, Empty, Empty)
-split a (Heap _ leq t) = foldMap f t
+split a (Heap _ leq t) = F.foldMap f t
   where
     f x = if leq x a
           then if leq a x
@@ -591,7 +602,7 @@ nub h@(Heap _ leq t) = insertWith leq x (nub zs)
 -- fromList [1,4,5,2]
 concatMap :: (a -> Heap b) -> Heap a -> Heap b
 concatMap _ Empty = Empty
-concatMap f (Heap _ _ t) = foldMap f t
+concatMap f (Heap _ _ t) = F.foldMap f t
 {-# INLINE concatMap #-}
 
 -- | /O(n log n)/. Group a heap into a heap of heaps, by unioning together duplicates.
@@ -617,7 +628,7 @@ groupBy f h@(Heap _ leq t) = insert (insertWith leq x ys) (groupBy f zs)
 intersect :: Heap a -> Heap a -> Heap a
 intersect Empty _ = Empty
 intersect _ Empty = Empty
-intersect a@(Heap _ leq _) b = go leq (toList a) (toList b)
+intersect a@(Heap _ leq _) b = go leq (F.toList a) (F.toList b)
   where
     go leq' xxs@(x:xs) yys@(y:ys) =
         if leq' x y
@@ -633,7 +644,7 @@ intersect a@(Heap _ leq _) b = go leq (toList a) (toList b)
 intersectWith :: Ord b => (a -> a -> b) -> Heap a -> Heap a -> Heap b
 intersectWith _ Empty _ = Empty
 intersectWith _ _ Empty = Empty
-intersectWith f a@(Heap _ leq _) b = go leq f (toList a) (toList b)
+intersectWith f a@(Heap _ leq _) b = go leq f (F.toList a) (F.toList b)
   where
     go :: Ord b => (a -> a -> Bool) -> (a -> a -> b) -> [a] -> [a] -> Heap b
     go leq' f' xxs@(x:xs) yys@(y:ys)
@@ -648,12 +659,12 @@ intersectWith f a@(Heap _ leq _) b = go leq f (toList a) (toList b)
 
 -- | /O(n log n)/. Traverse the elements of the heap in sorted order and produce a new heap using 'Applicative' side-effects.
 traverse :: (Applicative t, Ord b) => (a -> t b) -> Heap a -> t (Heap b)
-traverse f = fmap fromList . Traversable.traverse f . toList
+traverse f = fmap fromList . T.traverse f . F.toList
 {-# INLINE traverse #-}
 
 -- | /O(n log n)/. Traverse the elements of the heap in sorted order and produce a new heap using 'Monad'ic side-effects.
 mapM :: (Monad m, Ord b) => (a -> m b) -> Heap a -> m (Heap b)
-mapM f = liftM fromList . Traversable.mapM f . toList
+mapM f = liftM fromList . T.mapM f . F.toList
 {-# INLINE mapM #-}
 
 both :: (a -> b) -> (a, a) -> (b, b)
@@ -680,11 +691,11 @@ instance Functor Forest where
 
 -- internal foldable instances that should only be used over commutative monoids
 instance Foldable Tree where
-  foldMap f (Node _ a as) = f a `mappend` foldMap f as
+  foldMap f (Node _ a as) = f a `mappend` F.foldMap f as
 
 -- internal foldable instances that should only be used over commutative monoids
 instance Foldable Forest where
-  foldMap f (a `Cons` as) = foldMap f a `mappend` foldMap f as
+  foldMap f (a `Cons` as) = F.foldMap f a `mappend` F.foldMap f as
   foldMap _ Nil = mempty
 
 link :: (a -> a -> Bool) -> Tree a -> Tree a -> Tree a
@@ -755,12 +766,12 @@ splitForest _ _ _ _ = error "Heap.splitForest: invalid arguments"
 
 withList :: ([a] -> [a]) -> Heap a -> Heap a
 withList _ Empty = Empty
-withList f hp@(Heap _ leq _) = fromListWith leq (f (toList hp))
+withList f hp@(Heap _ leq _) = fromListWith leq (f (F.toList hp))
 {-# INLINE withList #-}
 
 splitWithList :: ([a] -> ([a],[a])) -> Heap a -> (Heap a, Heap a)
 splitWithList _ Empty = (Empty, Empty)
-splitWithList f hp@(Heap _ leq _) = both (fromListWith leq) (f (toList hp))
+splitWithList f hp@(Heap _ leq _) = both (fromListWith leq) (f (F.toList hp))
 {-# INLINE splitWithList #-}
 
 -- | Explicit priority/payload tuples. Useful to build a priority queue using

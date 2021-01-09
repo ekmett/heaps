@@ -1,5 +1,16 @@
-next [????.??.??]
------------------
+0.4 [????.??.??]
+----------------
+* `heaps` now always exports a `null` function that is specialized to `Heap`,
+  i.e.,
+
+  ```haskell
+  null :: Heap a -> Bool
+  ```
+
+  Previously, this specialized versions of `null` was only exported with GHC
+  7.8 or older, and for more recent GHCs, the `Data.Foldable` version was
+  exported instead. The exported API is now uniform across all supported
+  versions of GHC.
 * Export `adjustMin`.
 
 0.3.6.1 [2019.02.05]

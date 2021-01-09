@@ -1,7 +1,7 @@
 no-tests-no-benchmarks: False
 unconstrained:          False
 allow-failures:         <7.3
-doctest:                True
+docspec:                True
 hlint:                  True
 irc-channels:           irc.freenode.org#haskell-lens
 irc-if-in-origin-repo:  True
