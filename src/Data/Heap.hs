@@ -12,7 +12,7 @@
 -- Portability :  portable
 --
 -- An efficient, asymptotically optimal, implementation of a priority queues
--- extended with support for efficient size, and `Data.Foldable`
+-- extended with support for efficient size and `Data.Foldable`.
 --
 -- /Note/: Since many function names (but not the type name) clash with
 -- "Prelude" names, this module is usually imported @qualified@, e.g.
@@ -41,15 +41,21 @@ module Data.Heap
     , size              -- O(1) :: Heap a -> Int
     , singleton         -- O(1) :: Ord a => a -> Heap a
     , insert            -- O(1) :: Ord a => a -> Heap a -> Heap a
-    , minimum           -- O(1) (/partial/) :: Ord a => Heap a -> a
+    , lookupMin         -- O(1) :: Heap a -> Maybe a
+    , minimum           -- O(1) (/partial/) :: Heap a -> a
     , deleteMin         -- O(log n) :: Heap a -> Heap a
+    , adjustMin         -- O(log n) :: (a -> a) -> Heap a -> Heap a
+    , updateMin         -- O(log n) :: (a -> Maybe a) -> Heap a -> Heap a
     , union             -- O(1) :: Heap a -> Heap a -> Heap a
+    , unions            -- O(n) :: Foldable f => f (Heap a) -> Heap a
     , uncons, viewMin   -- O(1)\/O(log n) :: Heap a -> Maybe (a, Heap a)
     -- * Transformations
     , mapMonotonic      -- O(n) :: Ord b => (a -> b) -> Heap a -> Heap b
     , map               -- O(n) :: Ord b => (a -> b) -> Heap a -> Heap b
     -- * To/From Lists
     , toUnsortedList    -- O(n) :: Heap a -> [a]
+    , toAscList         -- O(n log n) :: Heap a -> [a]
+    , toDescList        -- O(n log n) :: Heap a -> [a]
     , fromList          -- O(n) :: Ord a => [a] -> Heap a
     , sort              -- O(n log n) :: Ord a => [a] -> [a]
     , traverse          -- O(n log n) :: (Applicative t, Ord b) => (a -> t b) -> Heap a -> t (Heap b)
@@ -80,7 +86,7 @@ module Data.Heap
 import Prelude hiding
     ( map
     , span, dropWhile, takeWhile, break, filter, take, drop, splitAt
-    , foldr, minimum, replicate, mapM
+    , foldl, foldr, minimum, replicate, mapM
     , concatMap
 #if __GLASGOW_HASKELL__ < 710
     , null
@@ -174,7 +180,7 @@ instance Ord (Heap a) where
 
 
 
--- | /O(1)/. The empty heap
+-- | /O(1)/. The empty heap.
 --
 -- @'empty' ≡ 'fromList' []@
 --
@@ -184,7 +190,7 @@ empty :: Heap a
 empty = Empty
 {-# INLINE empty #-}
 
--- | /O(1)/. A heap with a single element
+-- | /O(1)/. A heap with a single element.
 --
 -- @
 -- 'singleton' x ≡ 'fromList' [x]
@@ -235,6 +241,15 @@ union (Heap s1 leq t1@(Node _ x1 f1)) (Heap s2 _ t2@(Node _ x2 f2))
   | otherwise = Heap (s1 + s2) leq (Node 0 x2 (skewInsert leq t1 f2))
 {-# INLINE union #-}
 
+-- | /O(n)/. Meld the value from a foldable of heaps into one heap.
+--
+-- @
+-- 'unions' = 'foldl' 'union' 'empty'
+-- @
+unions :: Foldable f => f (Heap a) -> Heap a
+unions = foldl' union empty
+{-# INLINE unions #-}
+
 -- | /O(log n)/. Create a heap consisting of multiple copies of the same value.
 --
 -- >>> replicate 'a' 10
@@ -265,10 +280,19 @@ uncons Empty = Nothing
 uncons l@(Heap _ _ t) = Just (root t, deleteMin l)
 {-# INLINE uncons #-}
 
--- | Same as 'uncons'
+-- | Same as 'uncons'.
 viewMin :: Heap a -> Maybe (a, Heap a)
 viewMin = uncons
 {-# INLINE viewMin #-}
+
+-- | /O(1)/. The minimal element of the heap. Returns 'Nothing' if the heap is empty.
+--
+-- >>> lookupMin (fromList [3,1,2])
+-- Just 1
+lookupMin :: Heap a -> Maybe a
+lookupMin Empty = Nothing
+lookupMin (Heap _ _ t) = Just (root t)
+{-# INLINE lookupMin #-}
 
 -- | /O(1)/. Assumes the argument is a non-'null' heap.
 --
@@ -306,6 +330,20 @@ adjustMin :: (a -> a) -> Heap a -> Heap a
 adjustMin _ Empty = Empty
 adjustMin f (Heap s leq (Node r x xs)) = Heap s leq (heapify leq (Node r (f x) xs))
 {-# INLINE adjustMin #-}
+
+-- | /O(log n)/. Update the minimum key in the heap and return the resulting heap.
+-- If @f x@ is 'Nothing', the minimum key is deleted.
+--
+-- >>> updateMin (Just . (+1)) (fromList [1,2,3])
+-- fromList [2,2,3]
+-- >>> updateMin (const Nothing) (fromList [1,2,3])
+-- fromList [2,3]
+updateMin :: (a -> Maybe a) -> Heap a -> Heap a
+updateMin _ Empty = Empty
+updateMin f h@(Heap s leq (Node r x xs)) = case f x of
+  Nothing -> deleteMin h
+  Just x' -> Heap s leq (heapify leq (Node r x' xs))
+{-# INLINE updateMin #-}
 
 type ForestZipper a = (Forest a, Forest a)
 
@@ -375,7 +413,7 @@ fromListWith :: (a -> a -> Bool) -> [a] -> Heap a
 fromListWith f = foldr (insertWith f) mempty
 {-# INLINE fromListWith #-}
 
--- | /O(n log n)/. Perform a heap sort
+-- | /O(n log n)/. Perform a heap sort.
 sort :: Ord a => [a] -> [a]
 sort = toList . fromList
 {-# INLINE sort #-}
@@ -402,17 +440,52 @@ instance Monoid (Heap a) where
 -- @'fromList' '.' 'toUnsortedList' ≡ 'id'@
 toUnsortedList :: Heap a -> [a]
 toUnsortedList Empty = []
-toUnsortedList (Heap _ _ t) = foldMap return t
+toUnsortedList (Heap _ _ t) = toList t
 {-# INLINE toUnsortedList #-}
 
+-- | /O(n log n)/. Returns the elements in the heap in ascending order.
+toAscList :: Heap a -> [a]
+toAscList = foldr (:) []
+{-# INLINE toAscList #-}
+
+-- | /O(n log n)/. Returns the elements in the heap in descending order.
+toDescList :: Heap a -> [a]
+toDescList = foldl (flip (:)) []
+{-# INLINE toDescList #-}
+
+-- | Folds in ascending order.
 instance Foldable Heap where
   foldMap _ Empty = mempty
-  foldMap f l@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin l)
+  foldMap f h@(Heap _ _ t) = f (root t) `mappend` foldMap f (deleteMin h)
+
+  foldr _ acc Empty = acc
+  foldr f acc h@(Heap _ _ t) = f (root t) (foldr f acc (deleteMin h))
 #if __GLASGOW_HASKELL__ >= 710
   null Empty = True
   null _ = False
+  {-# INLINE null #-}
 
   length = size
+  {-# INLINE length #-}
+
+  elem _ Empty = False
+  elem x (Heap _ _ t) = elem x t
+  {-# INLINE elem #-}
+
+  maximum Empty = error "maximum: empty heap"
+  maximum (Heap _ _ t) = maximum t
+  {-# INLINE maximum #-}
+
+  minimum = minimum
+  {-# INLINE minimum #-}
+
+  sum Empty = 0
+  sum (Heap _ _ t) = sum t
+  {-# INLINE sum #-}
+
+  product Empty = 1
+  product (Heap _ _ t) = product t
+  {-# INLINE product #-}
 #else
 
 -- | /O(1)/. Is the heap empty?
@@ -442,7 +515,7 @@ size Empty = 0
 size (Heap s _ _) = s
 {-# INLINE size #-}
 
--- | /O(n)/. Map a function over the heap, returning a new heap ordered appropriately for its fresh contents
+-- | /O(n)/. Map a function over the heap, returning a new heap ordered appropriately for its fresh contents.
 --
 -- >>> map negate (fromList [3,1,2])
 -- fromList [-3,-1,-2]
@@ -545,7 +618,7 @@ break = splitWithList . L.break
 -- >>> span (\x -> x `mod` 4 == 0) (fromList [4,8,12,14,16])
 -- (fromList [4,8,12],fromList [14,16])
 --
--- 'span' @p xs@ is equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
+-- 'span' @p xs@ is equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@.
 
 span :: (a -> Bool) -> Heap a -> (Heap a, Heap a)
 span = splitWithList . L.span
@@ -609,7 +682,7 @@ groupBy f h@(Heap _ leq t) = insert (insertWith leq x ys) (groupBy f zs)
     (ys,zs) = span (f x) xs
 {-# INLINE groupBy #-}
 
--- | /O(n log n + m log m)/. Intersect the values in two heaps, returning the value in the left heap that compares as equal
+-- | /O(n log n + m log m)/. Intersect the values in two heaps, returning the value in the left heap that compares as equal.
 intersect :: Heap a -> Heap a -> Heap a
 intersect Empty _ = Empty
 intersect _ Empty = Empty
@@ -625,7 +698,7 @@ intersect a@(Heap _ leq _) b = go leq (toList a) (toList b)
     go _ _ [] = empty
 {-# INLINE intersect #-}
 
--- | /O(n log n + m log m)/. Intersect the values in two heaps using a function to generate the elements in the right heap.
+-- | /O(n log n + m log m)/. Intersect the values in two heaps using a function to generate the elements in the resulting heap.
 intersectWith :: Ord b => (a -> a -> b) -> Heap a -> Heap a -> Heap b
 intersectWith _ Empty _ = Empty
 intersectWith _ _ Empty = Empty
@@ -782,6 +855,9 @@ instance Bifunctor Entry where
 instance Foldable (Entry p) where
   foldMap f (Entry _ a) = f a
   {-# INLINE foldMap #-}
+
+  foldr f acc (Entry _ a) = f a acc
+  {-# INLINE foldr #-}
 
 instance Traversable (Entry p) where
   traverse f (Entry p a) = Entry p `fmap` f a
