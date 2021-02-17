@@ -1,4 +1,4 @@
-0.4 [????.??.??]
+0.4 [2021.02.17]
 ----------------
 * `heaps` now always exports a `null` function that is specialized to `Heap`,
   i.e.,
