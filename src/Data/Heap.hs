@@ -374,7 +374,10 @@ heapify leq n@(Node r a as)
   | leq a a' = n
   | otherwise = Node r a' (rezip (left, heapify leq (Node r' a as') `Cons` right))
   where
-    (left, Node r' a' as' `Cons` right) = minZ leq as
+    -- (left, Node r' a' as' `Cons` right) = minZ leq as
+    (left, r', a', as', right) = case minZ leq as of
+      (left', Node r'' a'' as'' `Cons` right') -> (left', r'', a'', as'', right')
+      _                                        -> error "Heap.heapify: empty zipper"
 
 
 -- | /O(n)/. Build a heap from a list of values.
