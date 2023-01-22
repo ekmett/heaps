@@ -133,7 +133,7 @@ import Data.Semigroup (Semigroup(..))
 -- | A min-heap of values of type @a@.
 data Heap a
   = Empty
-  | Heap {-# UNPACK #-} !Int (a -> a -> Bool) {-# UNPACK #-} !(Tree a)
+  | Heap {-# UNPACK #-} !Int (a -> a -> Bool) !(Tree a)
   deriving Typeable
 
 #if __GLASGOW_HASKELL__ >= 707
