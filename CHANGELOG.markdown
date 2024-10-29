@@ -1,3 +1,7 @@
+next [????.??.??]
+-----------------
+* Drop support for pre-8.0 versions of GHC.
+
 0.4 [2021.02.17]
 ----------------
 * `heaps` now always exports a `null` function that is specialized to `Heap`,

@@ -11,20 +11,18 @@ category:       Data Structures
 synopsis:       Asymptotically optimal Brodal/Okasaki heaps.
 description:    Asymptotically optimal Brodal\/Okasaki bootstrapped skew-binomial heaps from the paper <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.48.973 "Optimal Purely Functional Priority Queues">, extended with a 'Foldable' interface.
 copyright:      (c) 2010-2015 Edward A. Kmett
-tested-with:    GHC == 7.0.4
-              , GHC == 7.2.2
-              , GHC == 7.4.2
-              , GHC == 7.6.3
-              , GHC == 7.8.4
-              , GHC == 7.10.3
-              , GHC == 8.0.2
+tested-with:    GHC == 8.0.2
               , GHC == 8.2.2
               , GHC == 8.4.4
               , GHC == 8.6.5
               , GHC == 8.8.4
               , GHC == 8.10.4
               , GHC == 9.0.2
-              , GHC == 9.2.2
+              , GHC == 9.2.8
+              , GHC == 9.4.8
+              , GHC == 9.6.6
+              , GHC == 9.8.2
+              , GHC == 9.10.1
 build-type:     Simple
 cabal-version:  >=1.10
 extra-source-files:
@@ -40,7 +38,7 @@ source-repository head
 library
   exposed-modules: Data.Heap
   build-depends:
-    base >= 4 && < 6
+    base >= 4.9 && < 6
   hs-source-dirs: src
   ghc-options: -O2 -Wall
   default-language: Haskell2010

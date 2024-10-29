@@ -1,8 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-#if __GLASGOW_HASKELL__ >= 707
 {-# LANGUAGE RoleAnnotations #-}
-#endif
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) Edward Kmett 2010-2015
@@ -32,9 +30,9 @@
 module Data.Heap
     (
     -- * Heap Type
-      Heap -- instance Eq,Ord,Show,Read,Data,Typeable
+      Heap -- instance Eq,Ord,Show,Read,Data
     -- * Entry type
-    , Entry(..) -- instance Eq,Ord,Show,Read,Data,Typeable
+    , Entry(..) -- instance Eq,Ord,Show,Read,Data
     -- * Basic functions
     , empty             -- O(1) :: Heap a
     , null              -- O(1) :: Heap a -> Bool
@@ -83,29 +81,18 @@ import Prelude hiding
     , span, dropWhile, takeWhile, break, filter, take, drop, splitAt
     , foldr, minimum, replicate, mapM
     , concatMap, null
-#if MIN_VERSION_base(4,8,0)
     , traverse
-#endif
     )
 import Control.Monad (liftM)
+import Data.Bifunctor
 import Data.Data (DataType, Constr, mkConstr, mkDataType, Fixity(Prefix), Data(..), constrIndex)
 import qualified Data.Foldable as F
 import Data.Function (on)
 import qualified Data.List as L
 import qualified Data.Traversable as T
-import Data.Typeable (Typeable)
 import Text.Read
 
-#if MIN_VERSION_base(4,8,0)
-import Data.Bifunctor
-#else
-import Control.Applicative (Applicative)
-import Data.Foldable (Foldable)
-import Data.Monoid (Monoid(mappend, mempty))
-import Data.Traversable (Traversable)
-#endif
-
-#if MIN_VERSION_base(4,9,0) && !(MIN_VERSION_base(4,11,0))
+#if !(MIN_VERSION_base(4,11,0))
 import Data.Semigroup (Semigroup(..))
 #endif
 
@@ -134,11 +121,7 @@ import Data.Semigroup (Semigroup(..))
 data Heap a
   = Empty
   | Heap {-# UNPACK #-} !Int (a -> a -> Bool) !(Tree a)
-  deriving Typeable
-
-#if __GLASGOW_HASKELL__ >= 707
 type role Heap nominal
-#endif
 
 instance Show a => Show (Heap a) where
   showsPrec _ Empty = showString "fromList []"
@@ -402,11 +385,9 @@ sort :: Ord a => [a] -> [a]
 sort = F.toList . fromList
 {-# INLINE sort #-}
 
-#if MIN_VERSION_base(4,9,0)
 instance Semigroup (Heap a) where
   (<>) = union
   {-# INLINE (<>) #-}
-#endif
 
 instance Monoid (Heap a) where
   mempty = empty
@@ -430,10 +411,8 @@ toUnsortedList (Heap _ _ t) = F.foldMap return t
 instance Foldable Heap where
   foldMap _ Empty = mempty
   foldMap f l@(Heap _ _ t) = f (root t) `mappend` F.foldMap f (deleteMin l)
-#if MIN_VERSION_base(4,8,0)
   null = null
   length = size
-#endif
 
 -- | /O(1)/. Is the heap empty?
 --
@@ -679,10 +658,10 @@ data Tree a = Node
   { rank :: {-# UNPACK #-} !Int
   , root :: a
   , _forest :: !(Forest a)
-  } deriving (Show,Read,Typeable)
+  } deriving (Show,Read)
 
 data Forest a = !(Tree a) `Cons` !(Forest a) | Nil
-  deriving (Show,Read,Typeable)
+  deriving (Show,Read)
 infixr 5 `Cons`
 
 instance Functor Tree where
@@ -786,16 +765,14 @@ splitWithList f hp@(Heap _ leq _) = both (fromListWith leq) (f (F.toList hp))
 -- ==> 'foldMap' 'payload' myHeap ≡ "HelloWorld!"
 -- @
 data Entry p a = Entry { priority :: p, payload :: a }
-  deriving (Read,Show,Data,Typeable)
+  deriving (Read,Show,Data)
 
 instance Functor (Entry p) where
   fmap f (Entry p a) = Entry p (f a)
   {-# INLINE fmap #-}
 
-#if MIN_VERSION_base(4,8,0)
 instance Bifunctor Entry where
   bimap f g (Entry p a) = Entry (f p) (g a)
-#endif
 
 instance Foldable (Entry p) where
   foldMap f (Entry _ a) = f a
